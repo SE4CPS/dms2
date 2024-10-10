@@ -8,34 +8,40 @@ Step 3: Same as step 2 but with Read-Only flag
 Step 4: Same as step 2 but using index on the 'status' field
 */
 
-// STEP 0: SET UP INDEXEBDB
+// STEP 0: SET UP INDEXEDDB
 function setupIndexedDB(dbName, itemStoreName, onComplete) {
     let request = indexedDB.open(dbName, 1);
 
     request.onupgradeneeded = function (event) {
-
         let db = event.target.result;
-        // Create an object store if it doesn't exist
+        
+        // Create the main object store if it doesn't exist
         if (!db.objectStoreNames.contains(itemStoreName)) {
             let itemStore = db.createObjectStore(itemStoreName, { keyPath: "id" });
-
+            
             // STEP 4: CREATE AN INDEX ON THE 'STATUS' FIELD
-            itemStore.createIndex("statusField", "status", {
-                unique: false
-            });
+            itemStore.createIndex("statusField", "status", { unique: false });
+        }
+
+        // Create the completed tasks object store if it doesn't exist
+        if (!db.objectStoreNames.contains("TodoListCompleted")) {
+            db.createObjectStore("TodoListCompleted", { keyPath: "id" });
         }
     };
+
     // If database is opened successfully
     request.onsuccess = function (event) {
         let db = event.target.result;
         console.log("IndexedDB setup successful!");
         onComplete(db);
     };
+
     // If database fails to open
     request.onerror = function (event) {
         console.error("Error opening IndexedDB:", event.target.error);
     };
 }
+
 
 // STEP 0: ADD 100,000 OBJECTS IN BATCHES OF 10,000
 function add100kObjects(db, itemStoreName, onComplete) {
@@ -173,6 +179,34 @@ function readCompletedTasksIndex(db, itemStoreName, callback) {
     };
 }
 
+// STEP 5: COPY COMPLETED TASKS TO "TODOLISTCOMPLETED" AND MEASURE READ TIME
+function copyToCompletedStore(db, fromStore, toStore, callback) {
+    let transaction = db.transaction([fromStore, toStore], "readwrite");
+    let fromItemStore = transaction.objectStore(fromStore);
+    let toItemStore = transaction.objectStore(toStore);
+    let request = fromItemStore.openCursor();
+    let startTime = performance.now();
+
+    request.onsuccess = function (event) {
+        let cursor = event.target.result;
+        if (cursor) {
+            if (cursor.value.status === "completed") {
+                toItemStore.add(cursor.value);
+            }
+            cursor.continue();
+        } else {
+            let endTime = performance.now();
+            readCompletedTasks(db, toStore, function (readTime) {
+                console.log(`Read completed tasks from ${toStore} in ${readTime} ms.`);
+                callback(readTime);
+            });
+        }
+    };
+
+    request.onerror = function (event) {
+        console.error("Error copying tasks to completed store:", event.target.error);
+    };
+}
 
 // Call the functions to set up the DB and read completed tasks
 setupIndexedDB("TodoDB", "TodoList", function (db) {
@@ -189,6 +223,10 @@ setupIndexedDB("TodoDB", "TodoList", function (db) {
                 // STEP 4: READ USING 'STATUS' INDEX
                 readCompletedTasksIndex(db, "TodoList", function (timeIndex) {
                     console.log(`Time to read using Approach 3: ${timeIndex} ms`);
+                });
+                // STEP 5: READ FROM "TODOLISTCOMPLETED"
+                copyToCompletedStore(db, "TodoList", "TodoListCompleted", function (readTime) {
+                    console.log(`Time to read using Approach 4: ${readTime} ms`);
                 });
            });
         })  
