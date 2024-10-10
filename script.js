@@ -94,7 +94,7 @@ function add100kObjects(db, itemStoreName, onComplete) {
 }
 
 // STEP 2: READ ALL COMPLETED TASKS AND MEASURE TIME
-function readCompletedTasks(db, itemStoreName, callback) {
+function readCompletedTasks(db, itemStoreName, callback, stepName = "Step 2") {
     let transaction = db.transaction(itemStoreName);
     let itemStore = transaction.objectStore(itemStoreName);
     let request = itemStore.openCursor();
@@ -112,7 +112,7 @@ function readCompletedTasks(db, itemStoreName, callback) {
         } else {
             let endTime = performance.now();
             let time = (endTime - startTime).toFixed(2);
-            console.log(`Approach 1: Read ${completedTasks} completed tasks in ${time} ms.`);
+            console.log(`${stepName}: Read ${completedTasks} completed tasks in ${time} ms.`);
             callback(time);
         }
     };
@@ -140,7 +140,7 @@ function readCompletedTasksReadOnly(db, itemStoreName, callback) {
         } else {
             let endTime = performance.now();
             let time = (endTime - startTime).toFixed(2);
-            console.log(`Approach 2 (Read-Only flag): Read ${completedTasks} completed tasks in ${time} ms.`);
+            console.log(`Step 3 (using Read-Only flag): Read ${completedTasks} completed tasks in ${time} ms.`);
             callback(time);
         }
     };
@@ -169,7 +169,7 @@ function readCompletedTasksIndex(db, itemStoreName, callback) {
         } else {
             let endTime = performance.now();
             let time = (endTime - startTime).toFixed(2);
-            console.log(`Approach 3 (using Index): Read ${completedTasks} completed tasks in ${time} ms.`);
+            console.log(`Step 4 (using Index): Read ${completedTasks} completed tasks in ${time} ms.`);
             callback(time);  // Pass the time to the callback
         }
     };
@@ -197,7 +197,7 @@ function copyToCompletedStore(db, fromStore, toStore, callback) {
         } else {
             let endTime = performance.now();
             readCompletedTasks(db, toStore, function (readTime) {
-                console.log(`Read completed tasks from ${toStore} in ${readTime} ms.`);
+                console.log(`Step 5: Read completed tasks from ${toStore} in ${readTime} ms.`);
                 callback(readTime);
             });
         }
@@ -214,20 +214,22 @@ setupIndexedDB("TodoDB", "TodoList", function (db) {
         
         // STEP 2: READ WITHOUT FLAG
          readCompletedTasks(db, "TodoList", function (time) {
-            console.log(`Time to read using Approach 1: ${time} ms`);
+            console.log(`Time to read in Step 2: ${time} ms`);
 
             // STEP 3: READ WITH READ-ONLY FLAG
             readCompletedTasksReadOnly(db, "TodoList", function (timeReadonly) {
-                console.log(`Time to read using Approach 2: ${timeReadonly} ms`);
+                console.log(`Time to read in Step 3: ${timeReadonly} ms`);
 
                 // STEP 4: READ USING 'STATUS' INDEX
                 readCompletedTasksIndex(db, "TodoList", function (timeIndex) {
-                    console.log(`Time to read using Approach 3: ${timeIndex} ms`);
+                    console.log(`Time to read in Step 4: ${timeIndex} ms`);
                 });
                 // STEP 5: READ FROM "TODOLISTCOMPLETED"
                 copyToCompletedStore(db, "TodoList", "TodoListCompleted", function (readTime) {
-                    console.log(`Time to read using Approach 4: ${readTime} ms`);
-                });
+                    readCompletedTasks(db, "TodoListCompleted", function (timeCompleted) {
+                        console.log(`Time to read in Step 5: ${timeCompleted} ms`);
+                    }, "Step 5");
+                }, "Step 5");
            });
         })  
     });
