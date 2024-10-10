@@ -199,7 +199,7 @@ function copyToCompletedStore(db, fromStore, toStore, callback) {
             readCompletedTasks(db, toStore, function (readTime) {
                 console.log(`Step 5: Read completed tasks from ${toStore} in ${readTime} ms.`);
                 callback(readTime);
-            });
+            }, "Step 5");
         }
     };
 
