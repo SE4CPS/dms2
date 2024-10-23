@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypt/Decrypt To-Do Items Performance</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 700px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        button {
+            margin: 10px;
+            padding: 10px;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .performance-metrics {
+            text-align: left;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .output {
+            margin-top: 15px;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Encrypt/Decrypt To-Do Items Performance</h2>
+
+    <button onclick="initializeAndEncrypt()">Initialize & Encrypt</button>
+    <button onclick="decryptData()">Decrypt</button>
+
+    <div class="performance-metrics">
+        <p><strong>Encryption Time:</strong> <span id="encryptionTime"></span> ms</p>
+        <p><strong>Decryption Time:</strong> <span id="decryptionTime"></span> ms</p>
+    </div>
+
+    <div class="output">
+        <p><strong>Encrypted Data (First 5 items):</strong></p>
+        <p id="encryptedData"></p>
+        <p><strong>Decrypted Data (First 5 items):</strong></p>
+        <p id="decryptedData"></p>
+    </div>
+</div>
+
+<script>
+    let key, iv, encryptedData;
+
+    const tasks = [];
+    for (let i = 0; i < 100; i++) {
+        tasks.push({
+            uuid: `todo-${i}`,
+            task: `Task ${i + 1}`,
+            status: i % 2 === 0 ? 'Completed' : 'Pending'
+        });
+    }
+
+    // Function to generate encryption key
+    async function generateKey() {
+        key = await crypto.subtle.generateKey(
+            { name: "AES-GCM", length: 256 },
+            true,
+            ["encrypt", "decrypt"]
+        );
+        iv = crypto.getRandomValues(new Uint8Array(12));
+        console.log('Encryption key and IV generated.');
+    }
+
+    // Function to initialize and encrypt tasks
+    async function initializeAndEncrypt() {
+        if (!key) await generateKey();
+
+        const encoder = new TextEncoder();
+        const encodedData = encoder.encode(JSON.stringify(tasks));
+
+        const start = performance.now();
+        encryptedData = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            encodedData
+        );
+        const end = performance.now();
+
+        document.getElementById('encryptionTime').textContent = (end - start).toFixed(2);
+
+        // Convert encrypted data to base64 for display purposes
+        const encryptedDataArray = Array.from(new Uint8Array(encryptedData));
+        const encryptedDisplay = encryptedDataArray.slice(0, 50).join(", ");
+        document.getElementById('encryptedData').textContent = `{ ${encryptedDisplay} ... }`;
+
+        console.log('Encryption complete.');
+        console.log('Encrypted Data (First 50 bytes):', encryptedDisplay);
+    }
+
+    // Function to decrypt tasks
+    async function decryptData() {
+        if (!encryptedData) {
+            console.error('No encrypted data to decrypt.');
+            return;
+        }
+
+        const start = performance.now();
+        const decryptedArrayBuffer = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            encryptedData
+        );
+        const end = performance.now();
+
+        document.getElementById('decryptionTime').textContent = (end - start).toFixed(2);
+
+        const decoder = new TextDecoder();
+        const decryptedData = decoder.decode(decryptedArrayBuffer);
+        const parsedData = JSON.parse(decryptedData);
+
+        const decryptedDisplay = JSON.stringify(parsedData.slice(0, 5), null, 2);
+        document.getElementById('decryptedData').textContent = decryptedDisplay;
+
+        console.log('Decryption complete.');
+        console.log('Decrypted Data (First 5 items):', parsedData.slice(0, 5));
+    }
+</script>
+
+</body>
+</html>
+
