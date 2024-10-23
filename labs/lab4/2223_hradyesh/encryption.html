@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypt/Decrypt To-Do Tasks</title>
+    <script>
+        let encryptionKey;
+
+        // Function to generate encryption key
+        async function generateEncryptionKey() {
+            encryptionKey = await crypto.subtle.generateKey(
+                {
+                    name: "AES-GCM",
+                    length: 256
+                },
+                true,
+                ["encrypt", "decrypt"]
+            );
+        }
+
+        // Function to encrypt a message (task)
+        async function encryptTask(task) {
+            const enc = new TextEncoder();
+            const iv = crypto.getRandomValues(new Uint8Array(12)); // Initialization vector
+            const encrypted = await crypto.subtle.encrypt(
+                {
+                    name: "AES-GCM",
+                    iv: iv
+                },
+                encryptionKey,
+                enc.encode(task)
+            );
+            return { iv, encrypted };
+        }
+
+        // Function to create IndexedDB for encrypted To-Do tasks
+        function createDatabase() {
+            let request = indexedDB.open('EncryptedToDoDB', 1);
+
+            // Database creation and upgrade
+            request.onupgradeneeded = function(event) {
+                let db = event.target.result;
+
+                // Create object store if it doesn't exist
+                if (!db.objectStoreNames.contains('EncryptedToDoStore')) {
+                    db.createObjectStore('EncryptedToDoStore', { keyPath: 'taskId' });
+                }
+            };
+
+            // On success
+            request.onsuccess = function(event) {
+                let db = event.target.result;
+                generateAndStoreTasks(db);
+            };
+
+            // On error
+            request.onerror = function(event) {
+                console.error('Error opening IndexedDB:', event);
+            };
+        }
+
+        // Function to generate 1000 encrypted To-Do tasks and store them in IndexedDB
+        async function generateAndStoreTasks(db) {
+            let statusArr = ["Pending", "Processing", "Completed"];
+            let startTime = performance.now();
+
+            // Loop through each task sequentially and add it to the object store
+            for (let i = 1; i <= 1000; i++) {
+                let taskId = crypto.randomUUID();
+                let now = new Date().toISOString();
+                let task = {
+                    taskName: "Task " + i,
+                    status: statusArr[Math.floor(Math.random() * 3)],
+                    createdAt: now
+                };
+
+                try {
+                    // Encrypt the task before storing
+                    let encryptedTask = await encryptTask(JSON.stringify(task));
+
+                    // Create a new transaction for each task
+                    let transaction = db.transaction(['EncryptedToDoStore'], 'readwrite');
+                    let objectStore = transaction.objectStore('EncryptedToDoStore');
+
+                    // Add encrypted task to the object store synchronously
+                    await new Promise((resolve, reject) => {
+                        let request = objectStore.add({
+                            taskId: taskId,
+                            iv: Array.from(encryptedTask.iv), // Store iv as an array
+                            encryptedData: Array.from(new Uint8Array(encryptedTask.encrypted)) // Store encrypted task as an array
+                        });
+
+                        request.onsuccess = function() {
+                            resolve();
+                        };
+
+                        request.onerror = function() {
+                            console.error('Error adding encrypted task:', request.error);
+                            reject(request.error);
+                        };
+                    });
+                } catch (error) {
+                    console.error('Error encrypting or adding task:', error);
+                }
+            }
+
+            let endTime = performance.now();
+            console.log('All encrypted tasks have been added.');
+            console.log('Time taken to encrypt and store tasks: ', (endTime - startTime) + 'ms');
+            readAndDecryptData(db);
+        }
+
+        // Function to read encrypted data from IndexedDB and decrypt it
+        function readAndDecryptData(db) {
+            let transaction = db.transaction(['EncryptedToDoStore'], 'readonly');
+            let objectStore = transaction.objectStore('EncryptedToDoStore');
+            let requestAll = objectStore.getAll();
+
+            let startTime = performance.now();
+
+            requestAll.onsuccess = async function() {
+                let encryptedTasks = requestAll.result;
+                for (let encryptedTask of encryptedTasks) {
+                    let iv = new Uint8Array(encryptedTask.iv);
+                    let encryptedData = new Uint8Array(encryptedTask.encryptedData);
+                    let decryptedTask = await decryptTask(encryptedData, iv);
+                }
+
+                let endTime = performance.now();
+                console.log('Time taken to read and decrypt tasks: ', (endTime - startTime) + 'ms');
+            };
+
+            requestAll.onerror = function() {
+                console.error('Error reading tasks:', requestAll.error);
+            };
+        }
+
+        // Function to decrypt an encrypted task
+        async function decryptTask(encryptedTask, iv) {
+            const dec = new TextDecoder();
+            const decrypted = await crypto.subtle.decrypt(
+                {
+                    name: "AES-GCM",
+                    iv: iv
+                },
+                encryptionKey,
+                encryptedTask
+            );
+            return dec.decode(decrypted);
+        }
+
+        // Load the database and initialize on page load
+        window.onload = async function() {
+            await generateEncryptionKey(); // Generate encryption key
+            createDatabase();
+        };
+    </script>
+</head>
+<body>
+    <h1>Encrypted To-Do Task Dashboard</h1>
+</body>
+</html>
