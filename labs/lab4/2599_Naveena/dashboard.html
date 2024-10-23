@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Status Chart with Chart.js</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js Library -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f7f7f7;
+        }
+
+        .chart-container {
+            text-align: center;
+            width: 450px;
+        }
+
+        h1 {
+            font-size: 26px;
+            margin-bottom: 20px;
+            color: #444;
+        }
+
+        canvas {
+            background-color: #fff;
+            border: 1px solid #999;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chart-container">
+        <h1>Task Status Summary</h1>
+        <canvas id="statusChart" width="400" height="300"></canvas> <!-- Canvas for the chart -->
+    </div>
+
+    <script>
+        // Open the IndexedDB database for storing task data
+        function openDatabase(onSuccess) {
+            const request = indexedDB.open("TaskDB", 1);
+
+            request.onupgradeneeded = function(event) {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains("taskRecords")) {
+                    db.createObjectStore("taskRecords", { keyPath: "id", autoIncrement: true });
+                }
+            };
+
+            request.onsuccess = function(event) {
+                onSuccess(event.target.result);
+            };
+
+            request.onerror = function(event) {
+                console.error("Database error:", event.target.error);
+            };
+        }
+
+        // Function to assign a more realistic random status
+        function assignRandomStatus() {
+            const rand = Math.random();
+            return rand < 0.6 ? "Completed" : 
+                   rand < 0.9 ? "In Progress" : "Delayed"; // 60% Completed, 30% In Progress, 10% Delayed
+        }
+
+        // Populate the database with randomly generated tasks
+        function populateTaskDatabase() {
+            openDatabase(db => {
+                const transaction = db.transaction("taskRecords", "readwrite");
+                const store = transaction.objectStore("taskRecords");
+
+                store.count().onsuccess = function(event) {
+                    if (event.target.result === 0) {
+                        for (let i = 1; i <= 1000; i++) {
+                            const taskStatus = assignRandomStatus();
+                            store.add({ title: `Task ${i}`, status: taskStatus });
+                        }
+                        console.log("Database populated with 1,000 tasks.");
+                    }
+                };
+
+                transaction.oncomplete = function() {
+                    db.close();
+                };
+            });
+        }
+
+        // Fetch task data from the database and update the chart
+        function loadTasksAndRenderChart() {
+            openDatabase(db => {
+                const transaction = db.transaction("taskRecords", "readonly");
+                const store = transaction.objectStore("taskRecords");
+                const request = store.getAll();
+
+                request.onsuccess = function(event) {
+                    const tasks = event.target.result;
+                    const statusCount = { "Completed": 0, "In Progress": 0, "Delayed": 0 };
+
+                    tasks.forEach(task => {
+                        statusCount[task.status]++;
+                    });
+
+                    renderChart(statusCount);
+                };
+            });
+        }
+
+        // Render the bar chart using Chart.js based on the task status count
+        function renderChart(statusData) {
+            const chartContext = document.getElementById('statusChart').getContext('2d');
+
+            // Destroy the previous chart instance if it exists
+            if (window.taskChart) {
+                window.taskChart.destroy();
+            }
+
+            window.taskChart = new Chart(chartContext, {
+                type: 'bar',
+                data: {
+                    labels: ['Completed', 'In Progress', 'Delayed'],
+                    datasets: [{
+                        label: 'Number of Tasks',
+                        data: [statusData["Completed"], statusData["In Progress"], statusData["Delayed"]],
+                        backgroundColor: ['green', 'orange', 'red'],
+                        borderColor: ['darkgreen', 'darkorange', 'darkred'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 50
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Populate database and render the chart
+        populateTaskDatabase();
+        loadTasksAndRenderChart();
+    </script>
+
+</body>
+</html>
