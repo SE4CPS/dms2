@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Function to create IndexedDB for To-Do tasks
+        function createDatabase() {
+            let request = indexedDB.open('ToDoDB', 1);
+
+            // Database creation and upgrade
+            request.onupgradeneeded = function(event) {
+                let db = event.target.result;
+
+                // Create object store if it doesn't exist
+                if (!db.objectStoreNames.contains('ToDoStore')) {
+                    let objectStore = db.createObjectStore('ToDoStore', { keyPath: 'taskId' });
+                }
+            };
+
+            // On success
+            request.onsuccess = function(event) {
+                let db = event.target.result;
+                generateAndStoreTasks(db);
+            };
+
+            // On error
+            request.onerror = function(event) {
+                console.error('Error opening IndexedDB:', event);
+            };
+        }
+
+        // Function to generate 1000 To-Do tasks and store them in IndexedDB
+        function generateAndStoreTasks(db) {
+            let transaction = db.transaction(['ToDoStore'], 'readwrite');
+            let objectStore = transaction.objectStore('ToDoStore');
+            let statusArr = ["Pending", "Processing", "Completed"]
+
+            for (let i = 1; i <= 1000; i++) {
+                let taskId = crypto.randomUUID();
+                let now = new Date().toISOString();
+                let task = {
+                    taskId: taskId,
+                    taskName: "Task " + i,
+                    status: statusArr[Math.floor(Math.random() * 3)],
+                    createdAt: now
+                };
+
+                let request = objectStore.add(task);
+
+                request.onsuccess = function() {
+                    console.log('Task added with ID:', taskId);
+                };
+
+                request.onerror = function() {
+                    console.error('Error adding task:', request.error);
+                };
+            }
+
+            transaction.oncomplete = function() {
+                console.log('All tasks have been added.');
+                readAndDisplayData(); // Read data after tasks are added
+            };
+
+            transaction.onerror = function() {
+                console.error('Transaction error:', transaction.error);
+            };
+        }
+
+        // Function to read data from IndexedDB and update the bar chart
+        function readAndDisplayData() {
+            let request = indexedDB.open('ToDoDB', 1);
+
+            request.onsuccess = function(event) {
+                let db = event.target.result;
+                let transaction = db.transaction(['ToDoStore'], 'readonly');
+                let objectStore = transaction.objectStore('ToDoStore');
+                let requestAll = objectStore.getAll();
+
+                requestAll.onsuccess = function() {
+                    let tasks = requestAll.result;
+                    let completedCount = tasks.filter(task => task.status === 'Completed').length;
+                    let pendingCount = tasks.filter(task => task.status === 'Pending').length;
+                    let processingCount = tasks.filter(task => task.status === 'Processing').length;
+
+                    updateChart(completedCount, processingCount, pendingCount); // Update chart with counts
+                };
+
+                requestAll.onerror = function() {
+                    console.error('Error reading tasks:', requestAll.error);
+                };
+            };
+        }
+
+        // Function to update the bar chart
+        function updateChart(completed, processing, pending) {
+            const ctx = document.getElementById('taskChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Completed', 'Processing', 'Pending'],
+                    datasets: [{
+                        label: '# of Tasks',
+                        data: [completed, processing, pending],
+                        backgroundColor: ['#4CAF50', '#3687ef', '#FF9800'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load the database and initialize on page load
+        window.onload = function() {
+            createDatabase();
+        };
+    </script>
+</head>
+<body>
+    <h1>To-Do Task Dashboard</h1>
+    <canvas id="taskChart" width="400" height="150"></canvas>
+</body>
+</html>
