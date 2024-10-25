@@ -1,1 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Status Dashboard</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .chart-container {
+      text-align: center;
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 20px;
+      color: #34495e;
+    }
+    svg {
+      background-color: #ecf0f1;
+      width: 400px;
+      height: 300px;
+    }
+    .axis-label {
+      font-size: 12px;
+      fill: #7f8c8d;
+    }
+    .bar-label {
+      font-size: 14px;
+      fill: #2c3e50;
+    }
+  </style>
+</head>
+<body>
+<div class="chart-container">
+  <h1>Task Status Chart</h1>
+  <svg id="chart"></svg>
+</div>
 
+<script>
+  const dbName = 'TaskDB';
+  const storeName = 'TaskStore';
+
+  const request = indexedDB.open(dbName, 1);
+  request.onsuccess = event => {
+    const db = event.target.result;
+    fetchTasks(db);
+  };
+
+  function fetchTasks(db) {
+    const transaction = db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+    store.getAll().onsuccess = event => {
+      const tasks = event.target.result;
+      drawChart(tasks);
+    };
+  }
+
+  function drawChart(tasks) {
+    const completed = tasks.filter(task => task.status === 'Completed').length;
+    const pending = tasks.length - completed;
+
+    const chartData = [
+      { label: 'Completed', value: completed, color: 'green' },
+      { label: 'Pending', value: pending, color: 'orange' }
+    ];
+
+    const svg = document.getElementById('chart');
+    svg.innerHTML = ''; // Clear previous chart
+
+    const maxCount = Math.max(...chartData.map(d => d.value));
+    const barWidth = 50;
+    const barSpacing = 80;
+    const chartHeight = 200;
+    const startX = 70;
+
+    chartData.forEach((data, index) => {
+      const barHeight = (data.value / maxCount) * chartHeight;
+
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', startX + index * barSpacing);
+      rect.setAttribute('y', chartHeight - barHeight + 50);
+      rect.setAttribute('width', barWidth);
+      rect.setAttribute('height', barHeight);
+      rect.setAttribute('fill', data.color);
+      svg.appendChild(rect);
+
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', startX + index * barSpacing + 10);
+      label.setAttribute('y', chartHeight + 70);
+      label.textContent = data.label;
+      svg.appendChild(label);
+
+      const countLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      countLabel.setAttribute('x', startX + index * barSpacing + 15);
+      countLabel.setAttribute('y', chartHeight - barHeight + 45);
+      countLabel.textContent = data.value;
+      svg.appendChild(countLabel);
+    });
+  }
+</script>
+</body>
+</html>
