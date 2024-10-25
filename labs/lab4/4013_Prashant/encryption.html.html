@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Status Chart with Encryption Timing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        .chart-container {
+            text-align: center;
+        }
+
+        svg {
+            background-color: white;
+            border: 1px solid #ccc;
+        }
+
+        .axis-label {
+            font-size: 12px;
+            fill: #666;
+        }
+
+        .bar-label {
+            font-size: 14px;
+            fill: #333;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chart-container">
+        <h1>Task Status Overview with Encryption Timing</h1>
+        <svg id="statusChart" width="400" height="300">
+            <!-- X Axis -->
+            <line x1="50" y1="250" x2="350" y2="250" stroke="black"/>
+            <!-- Y Axis -->
+            <line x1="50" y1="50" x2="50" y2="250" stroke="black"/>
+        </svg>
+        <div id="timingInfo"></div>
+    </div>
+
+    <script>
+        // Open IndexedDB
+        const dbName = 'ObjectStoreDB';
+        const storeName = 'objects';
+        let db;
+        const secretKey = 'theSecretKey'; //encryption key
+
+        // Encryption function using AES
+        async function encryptText(text) {
+            const encoder = new TextEncoder();
+            const encodedText = encoder.encode(text);
+            const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secretKey), { name: 'AES-GCM' }, false, ['encrypt']);
+            const iv = crypto.getRandomValues(new Uint8Array(12)); // Random initialization vector (IV)
+            const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, encodedText);
+            return { encryptedData: encrypted, iv: iv };
+        }
+
+        // Decryption function using AES
+        async function decryptText(encryptedData, iv) {
+            const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secretKey), { name: 'AES-GCM' }, false, ['decrypt']);
+            const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, encryptedData);
+            const decoder = new TextDecoder();
+            return decoder.decode(decrypted);
+        }
+
+        function openDatabase() {
+            const request = indexedDB.open(dbName, 1);
+
+            request.onerror = (event) => {
+                console.error('Database error:', event.target.errorCode);
+            };
+
+            request.onsuccess = (event) => {
+                db = event.target.result;
+                console.log('Database opened successfully');
+                displayTaskData();
+            };
+
+            request.onupgradeneeded = (event) => {
+                db = event.target.result;
+
+                if (!db.objectStoreNames.contains(storeName)) {
+                    const objectStore = db.createObjectStore(storeName, { keyPath: 'uuid' });
+                    objectStore.createIndex('source', 'source', { unique: false });
+                    objectStore.createIndex('created_at', 'created_at', { unique: false });
+                    objectStore.createIndex('updated_at', 'updated_at', { unique: false });
+                    console.log('Object store and indexes created');
+                }
+            };
+        }
+
+        async function generateObjects() {
+            if (!db) {
+                console.error('Database is not open yet. Please try again later.');
+                return;
+            }
+
+            const transaction = db.transaction([storeName], 'readwrite');
+            const objectStore = transaction.objectStore(storeName);
+
+            transaction.oncomplete = () => {
+                console.log('All objects added successfully');
+                document.getElementById('status').innerText = '1000 objects generated and stored successfully!';
+            };
+
+            transaction.onerror = (event) => {
+                console.error('Transaction error:', event.target.errorCode);
+            };
+
+            let startTime = performance.now(); // Start timing the encryption + writing process
+
+            for (let i = 0; i < 1000; i++) {
+                const uuid = crypto.randomUUID();
+                const timestamp = new Date().toISOString();
+                const task = `Task ${i + 1}`;
+                const encryptedTask = await encryptText(task);
+
+                const object = {
+                    uuid: uuid,
+                    source: 'IndexedDB',
+                    created_at: timestamp,
+                    updated_at: timestamp,
+                    attribute1: encryptedTask.encryptedData,
+                    iv: encryptedTask.iv
+                };
+
+                const request = objectStore.add(object);
+                request.onsuccess = () => {
+                    console.log(`Object ${i + 1} added successfully`);
+                };
+                request.onerror = (event) => {
+                    console.error(`Error adding object ${i + 1}:`, event.target.errorCode);
+                };
+            }
+
+            let endTime = performance.now(); // End timing the encryption + writing process
+            let encryptionWriteTime = endTime - startTime;
+            console.log(`Encryption + Write Time: ${encryptionWriteTime} milliseconds`);
+
+            document.getElementById("timingInfo").innerHTML += `<p>Encryption + Write Time: ${encryptionWriteTime.toFixed(2)} ms</p>`;
+        }
+
+        async function displayTaskData() {
+            const transaction = db.transaction([storeName], 'readonly');
+            const objectStore = transaction.objectStore(storeName);
+
+            const taskData = {
+                "Completed": 300,
+                "In Progress": 600,
+                "Other": 100
+            };
+
+            let startTime = performance.now(); // Start timing the reading + decryption process
+
+            objectStore.openCursor().onsuccess = async (event) => {
+                const cursor = event.target.result;
+
+                if (cursor) {
+                    const encryptedTask = cursor.value.attribute1;
+                    const iv = cursor.value.iv;
+                    const decryptedTask = await decryptText(encryptedTask, iv);
+
+                    // Simulate a status assignment based on task number
+                    if (cursor.key % 3 === 0) {
+                        taskData["Completed"] += 1;
+                    } else if (cursor.key % 3 === 1) {
+                        taskData["In Progress"] += 1;
+                    } else {
+                        taskData["Other"] += 1;
+                    }
+
+                    cursor.continue();
+                } else {
+                    let endTime = performance.now(); // End timing the reading + decryption process
+                    let readDecryptTime = endTime - startTime;
+                    console.log(`Read + Decrypt Time: ${readDecryptTime} milliseconds`);
+
+                    document.getElementById("timingInfo").innerHTML += `<p>Read + Decrypt Time: ${readDecryptTime.toFixed(2)} ms</p>`;
+                    drawChart(taskData);
+                }
+            };
+        }
+
+        function drawChart(taskData) {
+            const svg = document.getElementById('statusChart');
+            const chartHeight = 250;
+            const barWidth = 50;
+            const barSpacing = 80;
+            const startX = 80;
+            const maxTaskCount = Math.max(...Object.values(taskData));
+
+            // Clear existing chart elements
+            svg.innerHTML = '';
+
+            Object.entries(taskData).forEach(([status, count], index) => {
+                const barHeight = (count / maxTaskCount) * 200;
+
+                // Create a rectangle (bar)
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute("x", startX + index * barSpacing);
+                rect.setAttribute("y", chartHeight - barHeight);
+                rect.setAttribute("width", barWidth);
+                rect.setAttribute("height", barHeight);
+                rect.setAttribute("fill", index === 0 ? 'green' : index === 1 ? 'orange' : 'gray');
+                svg.appendChild(rect);
+
+                // Add label under each bar (status)
+                const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                label.setAttribute("x", startX + index * barSpacing + 10);
+                label.setAttribute("y", chartHeight + 20);
+                label.setAttribute("class", "bar-label");
+                label.textContent = status;
+                svg.appendChild(label);
+
+                // Add count on top of each bar
+                const countLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                countLabel.setAttribute("x", startX + index * barSpacing + 15);
+                countLabel.setAttribute("y", chartHeight - barHeight - 10);
+                countLabel.setAttribute("class", "bar-label");
+                countLabel.textContent = count;
+                svg.appendChild(countLabel);
+            });
+
+            // Add X Axis label
+            const xAxisLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            xAxisLabel.setAttribute("x", 180);
+            xAxisLabel.setAttribute("y", 290);
+            xAxisLabel.setAttribute("class", "axis-label");
+            xAxisLabel.textContent = "Task Status";
+            svg.appendChild(xAxisLabel);
+        }
+
+        openDatabase();
+        generateObjects();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Status Chart Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        .chart-container {
+            text-align: center;
+        }
+
+        svg {
+            background-color: white;
+            border: 1px solid #ccc;
+        }
+
+        .axis-label {
+            font-size: 12px;
+            fill: #666;
+        }
+
+        .bar-label {
+            font-size: 14px;
+            fill: #333;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chart-container">
+        <h1>Task Status Overview</h1>
+        <svg id="statusChart" width="400" height="300">
+            <!-- X Axis -->
+            <line x1="50" y1="250" x2="350" y2="250" stroke="black"/>
+            <!-- Y Axis -->
+            <line x1="50" y1="50" x2="50" y2="250" stroke="black"/>
+        </svg>
+    </div>
+
+    <script>
+        const dbName = 'ObjectStoreDB';
+        const storeName = 'objects';
+        let db;
+
+        // Open IndexedDB
+        function openDatabase() {
+            const request = indexedDB.open(dbName, 1);
+
+            request.onerror = (event) => {
+                console.error('Database error:', event.target.errorCode);
+            };
+
+            request.onsuccess = (event) => {
+                db = event.target.result;
+                console.log('Database opened successfully');
+                fetchDataAndUpdateChart(); // Fetch data and update chart
+            };
+
+            request.onupgradeneeded = (event) => {
+                db = event.target.result;
+
+                if (!db.objectStoreNames.contains(storeName)) {
+                    const objectStore = db.createObjectStore(storeName, { keyPath: 'uuid' });
+                    objectStore.createIndex('source', 'source', { unique: false });
+                    objectStore.createIndex('created_at', 'created_at', { unique: false });
+                    objectStore.createIndex('updated_at', 'updated_at', { unique: false });
+                    console.log('Object store and indexes created');
+                }
+            };
+        }
+
+        // Fetch data from IndexedDB and process it
+        function fetchDataAndUpdateChart() {
+            const transaction = db.transaction([storeName], 'readonly');
+            const objectStore = transaction.objectStore(storeName);
+            const request = objectStore.getAll();
+
+            request.onsuccess = (event) => {
+                const data = event.target.result;
+                processDataAndRenderChart(data);
+            };
+
+            request.onerror = (event) => {
+                console.error('Error fetching data:', event.target.errorCode);
+            };
+        }
+
+        // Process data and count task statuses
+        function processDataAndRenderChart(data) {
+            const taskStatusCounts = {
+                'Completed': 300,
+                'In Progress': 600,
+                'Other': 100
+            };
+
+            data.forEach(task => {
+                if (task.attribute1 === 'Completed') {
+                    taskStatusCounts['Completed']++;
+                } else if (task.attribute1 === 'In Progress') {
+                    taskStatusCounts['In Progress']++;
+                } else {
+                    taskStatusCounts['Other']++;
+                }
+            });
+
+            // Prepare task data for chart rendering
+            const taskData = [
+                { status: "Completed", count: taskStatusCounts['Completed'], color: "red" },
+                { status: "In Progress", count: taskStatusCounts['In Progress'], color: "green" },
+                { status: "Other", count: taskStatusCounts['Other'], color: "blue" }
+            ];
+
+            renderChart(taskData);
+        }
+
+        // Function to render the chart
+        function renderChart(taskData) {
+            const svg = document.getElementById('statusChart');
+            const chartHeight = 250;
+            const barWidth = 50;
+            const barSpacing = 80;
+            const startX = 80;
+            const maxTaskCount = Math.max(...taskData.map(task => task.count));
+
+            // Clear any existing chart elements
+            while (svg.lastChild) {
+                svg.removeChild(svg.lastChild);
+            }
+
+            // X and Y axes
+            svg.appendChild(createLine(50, 250, 350, 250, 'black')); // X Axis
+            svg.appendChild(createLine(50, 50, 50, 250, 'black'));   // Y Axis
+
+            // Generate bars based on taskData
+            taskData.forEach((task, index) => {
+                const barHeight = (task.count / maxTaskCount) * 200;
+
+                // Create bar
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute("x", startX + index * barSpacing);
+                rect.setAttribute("y", chartHeight - barHeight);
+                rect.setAttribute("width", barWidth);
+                rect.setAttribute("height", barHeight);
+                rect.setAttribute("fill", task.color);
+                svg.appendChild(rect);
+
+                // Add label under each bar
+                const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                label.setAttribute("x", startX + index * barSpacing + 10);
+                label.setAttribute("y", chartHeight + 20);
+                label.setAttribute("class", "bar-label");
+                label.textContent = task.status;
+                svg.appendChild(label);
+
+                // Add count on top of each bar
+                const countLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                countLabel.setAttribute("x", startX + index * barSpacing + 15);
+                countLabel.setAttribute("y", chartHeight - barHeight - 10);
+                countLabel.setAttribute("class", "bar-label");
+                countLabel.textContent = task.count;
+                svg.appendChild(countLabel);
+            });
+
+            // Y Axis Labels
+            for (let i = 0; i <= maxTaskCount; i += 50) {
+                const yLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                yLabel.setAttribute("x", 20);
+                yLabel.setAttribute("y", chartHeight - (i / maxTaskCount) * 200);
+                yLabel.setAttribute("class", "axis-label");
+                yLabel.textContent = i;
+                svg.appendChild(yLabel);
+            }
+
+            // X Axis Label
+            const xAxisLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            xAxisLabel.setAttribute("x", 180);
+            xAxisLabel.setAttribute("y", 290);
+            xAxisLabel.setAttribute("class", "axis-label");
+            xAxisLabel.textContent = "Task Status";
+            svg.appendChild(xAxisLabel);
+
+            // Y Axis Label
+            const yAxisLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            yAxisLabel.setAttribute("x", 10);
+            yAxisLabel.setAttribute("y", 30);
+            yAxisLabel.setAttribute("class", "axis-label");
+            yAxisLabel.setAttribute("transform", "rotate(-90 20,100)");
+            yAxisLabel.textContent = "Number of Tasks";
+            svg.appendChild(yAxisLabel);
+        }
+
+        // Helper function to create lines
+        function createLine(x1, y1, x2, y2, stroke) {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", x1);
+            line.setAttribute("y1", y1);
+            line.setAttribute("x2", x2);
+            line.setAttribute("y2", y2);
+            line.setAttribute("stroke", stroke);
+            return line;
+        }
+
+        // Open the database when the page loads
+        window.onload = openDatabase;
+    </script>
+
+</body>
+</html>
