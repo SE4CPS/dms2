@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IndexedDB Encryption Example</title>
+  <!-- Include CryptoJS for encryption/decryption -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+</head>
+<body>
+  <h1>Setup IndexedDB</h1>
+  <button id="setupDB">Setup IndexedDB</button>
+
+  <h2>Add encrypted data to IndexedDB</h2>
+  <button id="addData">Add Data</button>
+
+  <h2>Decrypt data from IndexedDB</h2>
+  <button id="decrypt">Decrypt</button>
+
+  <h3>Encryption Time: <span id="encryptionTime">ms</span></h3>
+  <h3>Decryption Time: <span id="decryptionTime">ms</span></h3>
+
+  <script>
+    // Setup IndexedDB
+    document.getElementById("setupDB").addEventListener("click", function() {
+      let request = indexedDB.open("lab_4_encryption", 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains("todo_list")) {
+          db.createObjectStore("todo_list", { keyPath: "id", autoIncrement: true });
+        }
+        console.log("IndexedDB setup complete");
+      };
+    });
+
+    // Add encrypted data
+    document.getElementById("addData").addEventListener("click", function() {
+      const dbRequest = indexedDB.open("lab_4_encryption", 1);
+      dbRequest.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction("todo_list", "readwrite");
+        const objectStore = transaction.objectStore("todo_list");
+
+        console.time("Encryption Time");
+        for (let i = 0; i < 1000; i++) {
+          const task = `Task ${i+1}`;
+          const encryptedTask = CryptoJS.AES.encrypt(task, "secret-key").toString();
+          const data = { task: encryptedTask, id: i + 1 };
+          objectStore.add(data);
+        }
+        console.timeEnd("Encryption Time");
+      };
+    });
+
+    // Decrypt and read data
+    document.getElementById("decrypt").addEventListener("click", function() {
+      const dbRequest = indexedDB.open("lab_4_encryption", 1);
+      dbRequest.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction("todo_list", "readonly");
+        const objectStore = transaction.objectStore("todo_list");
+
+        console.time("Decryption Time");
+        const cursorRequest = objectStore.openCursor();
+        cursorRequest.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            const decryptedTask = CryptoJS.AES.decrypt(cursor.value.task, "secret-key").toString(CryptoJS.enc.Utf8);
+            console.log("Decrypted task:", decryptedTask);
+            cursor.continue();
+          } else {
+            console.timeEnd("Decryption Time");
+          }
+        };
+      };
+    });
+  </script>
+</body>
+</html>
