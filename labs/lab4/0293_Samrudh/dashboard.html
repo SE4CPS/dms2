@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <body>
+      <div class="chart-container">
+        <h1>Task Status Overview</h1>
+        <svg id="statusChart" width="400" height="300">
+          <!-- X Axis -->
+          <line x1="50" y1="250" x2="350" y2="250" stroke="black" />
+          <!-- Y Axis -->
+          <line x1="50" y1="50" x2="50" y2="250" stroke="black" />
+        </svg>
+      </div>
+
+      <script>
+      const status = ["Completed", "In Progress", "Other"];
+      const random_tasks = [
+          "Task 1",
+          "Task 2",
+          "Task 3",
+          "Task 4",
+          "Task 5",
+          "Task 6",
+          "Task 7",
+          "Task 8",
+          "Task 9",
+          "Task 10",
+      ];
+
+      // Function to generate random data for tasks
+      const generateRandomData = () => {
+          const status_idx = Math.floor(Math.random() * status.length);
+          const task_idx = Math.floor(Math.random() * random_tasks.length);
+          let data = {
+              task: random_tasks[task_idx],
+              status: status[status_idx],
+          };
+          return data;
+      };
+
+      // Function to store objects in IndexedDB
+      async function storeObjects() {
+          const dbRequest = indexedDB.open('lab3', 1);
+
+          dbRequest.onupgradeneeded = (event) => {
+              const db = event.target.result;
+              const objectStore = db.createObjectStore('0293', { keyPath: 'uuid' });
+              objectStore.createIndex('source', 'source', { unique: false });
+              objectStore.createIndex('task_number', 'task_number', { unique: false });
+              objectStore.createIndex('status', 'status', { unique: false });
+              objectStore.createIndex('computing_cost', 'computing_cost', { unique: false });
+          };
+
+          dbRequest.onsuccess = (event) => {
+              const db = event.target.result;
+              const transaction = db.transaction(['0293'], 'readwrite');
+              const objectStore = transaction.objectStore('0293');
+              const totalObjects = 1000;
+              let addedObjects = 0;
+
+              for (let i = 0; i < totalObjects; i++) {
+                  const object = {
+                      uuid: crypto.randomUUID(),
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                      source: `IndexedDB`,
+                      task_number: `task_${i + 1}`,
+                      computing_cost: Math.floor(Math.random() * 100) + 1,
+                      status: status[Math.floor(Math.random() * status.length)] // Use random status
+                  };
+
+                  const request = objectStore.add(object);
+
+                  request.onsuccess = () => {
+                      addedObjects++;
+                      document.getElementById('status').textContent = `Status: Added ${addedObjects} / ${totalObjects} objects.`;
+                  };
+
+                  request.onerror = (event) => {
+                      console.error('Error adding object: ', event.target.error);
+                  };
+              }
+
+              transaction.oncomplete = () => {
+                  document.getElementById('status').textContent = 'Status: Successfully stored 1000 objects in IndexedDB!';
+                  countStatuses(); // Call the function to count statuses
+              };
+
+              transaction.onerror = (event) => {
+                  document.getElementById('status').textContent = 'Status: Failed to store objects!';
+                  console.error('Transaction failed: ', event.target.error);
+              };
+          };
+
+          dbRequest.onerror = (event) => {
+              document.getElementById('status').textContent = 'Status: Database connection error!';
+              console.error('Database error: ', event.target.error);
+          };
+      }
+
+      // Function to count statuses
+      function countStatuses() {
+          let getTotal_completed = 0;
+          let getTotal_in_progress = 0;
+          let getTotal_other = 0;
+
+          const dbRequest = indexedDB.open('lab3', 1);
+
+          dbRequest.onsuccess = (event) => {
+              const db = event.target.result;
+              const transaction = db.transaction('0293', 'readonly');
+              const objectStore = transaction.objectStore('0293');
+              const cursorRequest = objectStore.openCursor();
+
+              cursorRequest.onsuccess = (event) => {
+                  const cursor = event.target.result;
+                  if (cursor) {
+                      if (cursor.value.status === "Completed") {
+                          getTotal_completed++;
+                      } else if (cursor.value.status === "In Progress") {
+                          getTotal_in_progress++;
+                      } else {
+                          getTotal_other++;
+                      }
+                      cursor.continue();
+                  } else {
+                      console.log("Data count complete");
+                      draw_graph(getTotal_completed, getTotal_in_progress, getTotal_other); // Pass counts to draw_graph
+                  }
+              };
+
+              cursorRequest.onerror = (event) => {
+                  console.error('Error counting objects: ', event.target.error);
+              };
+          };
+
+          dbRequest.onerror = (event) => {
+              console.error('Database connection error: ', event.target.error);
+          };
+      }
+
+      // Function to draw the graph using the counted statuses
+      const draw_graph = (completed, in_progress, other) => {
+          console.log("Total completed tasks: ", completed);
+          console.log("Total in progress tasks: ", in_progress);
+          console.log("Total other tasks: ", other);
+
+          const taskData = [
+              { status: "Completed", count: completed, color: "green" },
+              { status: "In Progress", count: in_progress, color: "orange" },
+              { status: "Other", count: other, color: "gray" },
+          ];
+
+          const svg = document.getElementById("statusChart");
+          const chartHeight = 250;
+          const barWidth = 50;
+          const barSpacing = 80;
+          const startX = 80;
+          const maxTaskCount = Math.max(...taskData.map((task) => task.count));
+
+          taskData.forEach((task, index) => {
+              const barHeight = (task.count / maxTaskCount) * 200;
+
+              const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+              rect.setAttribute("x", startX + index * barSpacing);
+              rect.setAttribute("y", chartHeight - barHeight);
+              rect.setAttribute("width", barWidth);
+              rect.setAttribute("height", barHeight);
+              rect.setAttribute("fill", task.color);
+              svg.appendChild(rect);
+
+              const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+              label.setAttribute("x", startX + index * barSpacing + 10);
+              label.setAttribute("y", chartHeight + 20);
+              label.textContent = task.status;
+              svg.appendChild(label);
+
+              const countLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+              countLabel.setAttribute("x", startX + index * barSpacing + 15);
+              countLabel.setAttribute("y", chartHeight - barHeight - 10);
+              countLabel.textContent = task.count;
+              svg.appendChild(countLabel);
+          });
+
+          // Y Axis Labels
+          for (let i = 0; i <= maxTaskCount; i += 50) {
+              const yLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+              yLabel.setAttribute("x", 20);
+              yLabel.setAttribute("y", chartHeight - (i / maxTaskCount) * 200);
+              yLabel.textContent = i;
+              svg.appendChild(yLabel);
+          }
+
+          // X Axis Label
+          const xAxisLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          xAxisLabel.setAttribute("x", 180);
+          xAxisLabel.setAttribute("y", 290);
+          xAxisLabel.textContent = "Task Status";
+          svg.appendChild(xAxisLabel);
+
+          // Y Axis Label
+          const yAxisLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          yAxisLabel.setAttribute("x", 10);
+          yAxisLabel.setAttribute("y", 30);
+          yAxisLabel.setAttribute("transform", "rotate(-90 20,100)");
+          yAxisLabel.textContent = "Number of Tasks";
+          svg.appendChild(yAxisLabel);
+      };
+  </script>
+
+  <!-- <svg id="statusChart" width="400" height="300"></svg> -->
+  <p id="status">Status: Ready</p>
+  <button onclick="storeObjects()">Start</button>
+
+  </body>
+</html>
