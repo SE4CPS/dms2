@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Encryption/Decryption Performance</title>
+  </head>
+  <body>
+  <script>
+  const random_grocery_tasks = [
+      "Buy groceries", "Clean the house", "Finish homework", "Walk the dog", "Cook dinner",
+      "Do laundry", "Wash the car", "Mow the lawn", "Take out the trash", "Water the plants",
+  ];
+
+  const status = ["progress", "completed"];
+
+  const generateRandomData = () => {
+      const get_random_task_idx = Math.floor(Math.random() * random_grocery_tasks.length);
+      const get_random_status_idx = Math.floor(Math.random() * status.length);
+      const dueDate = new Date(Date.now() + Math.floor(Math.random() * 10 * 24 * 60 * 60 * 1000)).toISOString(); // Random future date
+      return {
+          uuid: crypto.randomUUID(),
+          task: random_grocery_tasks[get_random_task_idx],
+          status: status[get_random_status_idx],
+          dueDate: dueDate
+      };
+  };
+
+  const setup_index_db = () => {
+      const request = indexedDB.open("lab_4", 2);
+      request.onupgradeneeded = async (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains("grocery_list")) {
+              const objectStore = db.createObjectStore("grocery_list", {
+                  keyPath: "id",
+                  autoIncrement: true,
+              });
+              const key = await generateKey();
+              localStorage.setItem("key", JSON.stringify(key));
+          } else {
+              console.log("Object store already exists");
+          }
+      };
+
+      request.onerror = (event) => {
+          console.log("Error setting up IndexedDB");
+      };
+
+      request.onsuccess = (event) => {
+          console.log("IndexedDB setup successful");
+      };
+  };
+
+  const add_encrypted_items_to_db = async () => {
+      const data_set = [];
+      const start = performance.now();
+      const getKey = JSON.parse(localStorage.getItem("key"));
+
+      const importedKey = await crypto.subtle.importKey("jwk", getKey, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]);
+
+      for (let i = 0; i < 1000; i++) {
+          const data = generateRandomData();
+          const iv = crypto.getRandomValues(new Uint8Array(12)); // Initialization vector
+          const encryptedArray = await encryptData(importedKey, iv, data);
+          data_set.push({ iv: iv, data: encryptedArray });
+      }
+
+      const end = performance.now();
+      document.getElementById("encryptionTime").textContent = `Encryption time: ${(end - start).toFixed(2)} ms`;
+
+      const request = indexedDB.open("lab_4", 2);
+      request.onsuccess = (event) => {
+          const db = event.target.result;
+          const transaction = db.transaction("grocery_list", "readwrite");
+          const objectStore = transaction.objectStore("grocery_list");
+
+          for (let i = 0; i < 1000; i++) {
+              objectStore.add(data_set[i]).onsuccess = () => console.log("Data added successfully");
+          }
+      };
+  };
+
+  const decrypt_items_from_db = async () => {
+      const request = indexedDB.open("lab_4", 2);
+      const getKey = JSON.parse(localStorage.getItem("key"));
+
+      const importedKey = await crypto.subtle.importKey("jwk", getKey, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]);
+
+      request.onsuccess = (event) => {
+          const db = event.target.result;
+          const transaction = db.transaction("grocery_list", "readonly");
+          const objectStore = transaction.objectStore("grocery_list");
+          const cursorRequest = objectStore.openCursor();
+
+          const start = performance.now();
+          cursorRequest.onsuccess = (event) => {
+              const cursor = event.target.result;
+              if (cursor) {
+                  decryptData(importedKey, cursor.value.iv, cursor.value.data);
+                  cursor.continue();
+              } else {
+                  const end = performance.now();
+                  document.getElementById("decryptionTime").textContent = `Decryption time: ${(end - start).toFixed(2)} ms`;
+              }
+          };
+      };
+  };
+
+  async function generateKey() {
+      const key = await crypto.subtle.generateKey(
+          { name: "AES-GCM", length: 256 },
+          true,
+          ["encrypt", "decrypt"]
+      );
+      return await crypto.subtle.exportKey("jwk", key);
+  }
+
+  async function encryptData(key, iv, data) {
+      const encoder = new TextEncoder();
+      const encodedData = encoder.encode(JSON.stringify(data));
+      const encryptedArray = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, encodedData);
+
+      const node = document.createElement("LI");
+      node.textContent = new Uint8Array(encryptedArray).toString();
+      document.getElementById("encryptedData").appendChild(node);
+      return encryptedArray;
+  }
+
+  async function decryptData(key, iv, data) {
+      if (!data) return;
+      const decryptedArrayBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, new Uint8Array(data));
+      const decodedData = new TextDecoder().decode(decryptedArrayBuffer);
+
+      const node = document.createElement("LI");
+      node.textContent = decodedData;
+      document.getElementById("decryptedData").appendChild(node);
+  }
+  </script>
+  <div>
+      <button onclick="setup_index_db()">Setup Database</button>
+      <button onclick="add_encrypted_items_to_db()">Add Encrypted Data</button>
+      <button onclick="decrypt_items_from_db()">Decrypt Data</button>
+  </div>
+  <p id="encryptionTime">Encryption Time: </p>
+  <p id="decryptionTime">Decryption Time: </p>
+  <ul id="encryptedData"></ul>
+  <ul id="decryptedData"></ul>
+  </body>
+</html>
