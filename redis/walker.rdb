@@ -5,14 +5,20 @@ SET walker:1:age '30'
 EXPIRE walker:1:age 86400
 SET walker:1:country 'USA'
 EXPIRE walker:1:country 86400
+ECHO 'Number of keys after create operation:'
+DBSIZE
 
 ECHO 'Create personal best time for a 5KM walk (expires in 7 days)'
 SET walker:1:pb:5km '45:20'
 EXPIRE walker:1:pb:5km 604800
+ECHO 'Number of keys after create operation:'
+DBSIZE
 
 ECHO 'Create initial distance record in kilometers (expires in 7 days)'
 SET walker:1:distance:km '0'
 EXPIRE walker:1:distance:km 604800
+ECHO 'Number of keys after create operation:'
+DBSIZE
 
 ECHO 'Create details for a walking event (expires in 30 days)'
 SET event:1:name 'City Walkathon'
@@ -23,18 +29,26 @@ SET event:1:date '2024-11-15'
 EXPIRE event:1:date 2592000
 SET event:1:distance:km '10'
 EXPIRE event:1:distance:km 2592000
+ECHO 'Number of keys after create operation:'
+DBSIZE
 
 ECHO 'Register the walker for the event (expires in 30 days)'
 SADD event:1:participants walker:1
 EXPIRE event:1:participants 2592000
+ECHO 'Number of keys after create operation:'
+DBSIZE
 
 ECHO 'Add walker to a walking group (expires in 7 days)'
 SADD group:morning:walkers walker:1
 EXPIRE group:morning:walkers 604800
+ECHO 'Number of keys after create operation:'
+DBSIZE
 
 ECHO 'Store split times for a walker during an event (expires in 7 days)'
 RPUSH walker:1:split:times '00:10:32' '00:10:28'
 EXPIRE walker:1:split:times 604800
+ECHO 'Number of keys after create operation:'
+DBSIZE
 
 ECHO 'Create a weekly walking schedule for the walker (expires in 7 days)'
 SET walker:1:schedule:Monday '5 km'
@@ -43,14 +57,20 @@ SET walker:1:schedule:Wednesday '3 km'
 EXPIRE walker:1:schedule:Wednesday 604800
 SET walker:1:schedule:Friday '6 km'
 EXPIRE walker:1:schedule:Friday 604800
+ECHO 'Number of keys after create operation:'
+DBSIZE
 
 ECHO 'Record steps taken by the walker on a specific day (expires in 3 days)'
 SET walker:1:steps:2024:10:31 '8000'
 EXPIRE walker:1:steps:2024:10:31 259200
+ECHO 'Number of keys after create operation:'
+DBSIZE
 
 ECHO 'Create a monthly walking goal for the walker (expires in 30 days)'
 SET walker:1:goal:monthly:distance:km '50'
 EXPIRE walker:1:goal:monthly:distance:km 2592000
+ECHO 'Number of keys after create operation:'
+DBSIZE
 
 
 ECHO 'Retrieve walker profile'
@@ -106,36 +126,56 @@ GET walker:1:goal:monthly:distance:km
 ECHO 'Update walker age (expires in 1 day)'
 SET walker:1:age '31'
 EXPIRE walker:1:age 86400
+ECHO 'Number of keys after update operation:'
+DBSIZE
 
 ECHO 'Update total distance walked in kilometers (expires in 7 days)'
 INCRBYFLOAT walker:1:distance:km 3.2
 EXPIRE walker:1:distance:km 604800
+ECHO 'Number of keys after update operation:'
+DBSIZE
 
 ECHO 'Update finish time for walker in the event (expires in 30 days)'
 HSET event:1:results walker:1 '1:35:20'
 EXPIRE event:1:results 2592000
+ECHO 'Number of keys after update operation:'
+DBSIZE
 
 ECHO 'Update the walker health condition (expires in 1 day)'
 SET walker:1:health 'minor foot pain'
 EXPIRE walker:1:health 86400
+ECHO 'Number of keys after update operation:'
+DBSIZE
 
 
 ECHO 'Delete walker profile information'
 DEL walker:1:name
 DEL walker:1:age
 DEL walker:1:country
+ECHO 'Number of keys after delete operation:'
+DBSIZE
 
 ECHO 'Delete walker personal best time'
 DEL walker:1:pb:5km
+ECHO 'Number of keys after delete operation:'
+DBSIZE
 
 ECHO 'Delete all split times for the walker'
 DEL walker:1:split:times
+ECHO 'Number of keys after delete operation:'
+DBSIZE
 
 ECHO 'Remove walker from the walking group'
 SREM group:morning:walkers walker:1
+ECHO 'Number of keys after delete operation:'
+DBSIZE
 
 ECHO 'Delete walker steps record for a specific day'
 DEL walker:1:steps:2024:10:31
+ECHO 'Number of keys after delete operation:'
+DBSIZE
 
 ECHO 'Delete walker monthly walking goal'
 DEL walker:1:goal:monthly:distance:km
+ECHO 'Number of keys after delete operation:'
+DBSIZE
