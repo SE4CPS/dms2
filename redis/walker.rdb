@@ -1,0 +1,120 @@
+ECHO 'Create basic walker profile'
+SET walker:1:name 'Jane Smith'
+SET walker:1:age '30'
+SET walker:1:country 'USA'
+
+ECHO 'Create personal best time for a 5KM walk'
+SET walker:1:pb:5km '45:20'
+
+ECHO 'Create initial distance record in kilometers'
+SET walker:1:distance:km '0'
+
+ECHO 'Create details for a walking event'
+SET event:1:name 'City Walkathon'
+SET event:1:location 'Chicago'
+SET event:1:date '2024-11-15'
+SET event:1:distance:km '10'
+
+ECHO 'Register the walker for the event'
+SADD event:1:participants walker:1
+
+ECHO 'Add walker to a walking group'
+SADD group:morning:walkers walker:1
+
+ECHO 'Store split times for a walker during an event'
+RPUSH walker:1:split:times '00:10:32' '00:10:28'
+
+ECHO 'Create a weekly walking schedule for the walker'
+SET walker:1:schedule:Monday '5 km'
+SET walker:1:schedule:Wednesday '3 km'
+SET walker:1:schedule:Friday '6 km'
+
+ECHO 'Record steps taken by the walker on a specific day'
+SET walker:1:steps:2024:10:31 '8000'
+
+ECHO 'Create a monthly walking goal for the walker'
+SET walker:1:goal:monthly:distance:km '50'
+
+
+ECHO 'Retrieve walkers profile'
+GET walker:1:name
+GET walker:1:age
+GET walker:1:country
+
+ECHO 'Retrieve personal best time for a 5KM walk'
+GET walker:1:pb:5km
+
+ECHO 'Retrieve total distance walked in kilometers'
+GET walker:1:distance:km
+
+ECHO 'Retrieve details of a walking event'
+GET event:1:name
+GET event:1:location
+GET event:1:date
+GET event:1:distance:km
+
+ECHO 'Check if walker is registered for the event'
+SISMEMBER event:1:participants walker:1
+
+ECHO 'Get list of all participants registered for the event'
+SMEMBERS event:1:participants
+
+ECHO 'Retrieve all split times for the walker'
+LRANGE walker:1:split:times 0 -1
+
+ECHO 'Retrieve the weekly walking schedule for the walker'
+GET walker:1:schedule:Monday
+GET walker:1:schedule:Wednesday
+GET walker:1:schedule:Friday
+
+ECHO 'Retrieve steps taken by the walker on a specific day'
+GET walker:1:steps:2024:10:31
+
+ECHO 'Check if the walker is part of the morning_walkers group'
+SISMEMBER group:morning:walkers walker:1
+
+ECHO 'Retrieve finish time for the walker in an event'
+HGET event:1:results walker:1
+
+ECHO 'Retrieve all finish times for participants in a specific event'
+HGETALL event:1:results
+
+ECHO 'Retrieve the walkers health condition'
+GET walker:1:health
+
+ECHO 'Retrieve the walkers monthly walking goal'
+GET walker:1:goal:monthly:distance:km
+
+
+ECHO 'Update walkers age'
+SET walker:1:age '31'
+
+ECHO 'Update total distance walked in kilometers'
+INCRBYFLOAT walker:1:distance:km 3.2
+
+ECHO 'Update finish time for walker in the event'
+HSET event:1:results walker:1 '1:35:20'
+
+ECHO 'Update the walker health condition'
+SET walker:1:health 'minor foot pain'
+
+
+ECHO 'Delete walkers profile information'
+DEL walker:1:name
+DEL walker:1:age
+DEL walker:1:country
+
+ECHO 'Delete walkers personal best time'
+DEL walker:1:pb:5km
+
+ECHO 'Delete all split times for the walker'
+DEL walker:1:split:times
+
+ECHO 'Remove walker from the walking group'
+SREM group:morning:walkers walker:1
+
+ECHO 'Delete walkers steps record for a specific day'
+DEL walker:1:steps:2024:10:31
+
+ECHO 'Delete walkers monthly walking goal'
+DEL walker:1:goal:monthly:distance:km
