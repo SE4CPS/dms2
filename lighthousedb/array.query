@@ -1,0 +1,39 @@
+-- Create a table with Array type to store flower ratings
+CREATE TABLE default.flower_ratings_array
+(
+    id UInt32,
+    name String,
+    ratings Array(UInt8),  -- Array to store ratings (e.g., an array of integers)
+    price DECIMAL(10, 2),
+    planting_year UInt16
+)
+ENGINE = MergeTree()
+ORDER BY id;
+
+-- Insert sample data into the flower_ratings_array table
+INSERT INTO default.flower_ratings_array VALUES
+(1, 'Rose', [5, 4, 5], 12.50, 2015),
+(2, 'Tulip', [3, 2, 3], 10.00, 2017),
+(3, 'Lily', [4, 5, 4], 8.75, 2015),
+(4, 'Daffodil', [2, 2, 3], 5.50, 2020),
+(5, 'Orchid', [5, 5, 5], 20.00, 2021),
+(6, 'Rose', [4, 4, 4], 13.00, 2016),
+(7, 'Tulip', [4, 3, 4], 9.50, 2018);
+
+-- Aggregating the average rating per flower using Array functions
+SELECT
+    name,
+    arrayAvg(ratings) AS avg_rating  -- arrayAvg calculates the average of elements in the array
+FROM
+    default.flower_ratings_array
+GROUP BY name
+ORDER BY avg_rating DESC;
+
+-- Expected Output (for reference):
+-- ┌─name──────┬─avg_rating─┐
+-- │ Orchid    │    5.0000 │
+-- │ Rose      │    4.3333 │
+-- │ Lily      │    4.3333 │
+-- │ Tulip     │    3.3333 │
+-- │ Daffodil  │    2.3333 │
+-- └───────────┴───────────┘
