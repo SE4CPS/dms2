@@ -1,0 +1,38 @@
+-- Create a table to store IP addresses (both IPv4 and IPv6)
+CREATE TABLE default.ip_addresses
+(
+    id UInt32,
+    name String,
+    ip_address IPv6,  -- Can be used to store both IPv4 and IPv6 addresses
+    timestamp DateTime
+)
+ENGINE = MergeTree()
+ORDER BY id;
+
+-- Insert sample data into the ip_addresses table
+INSERT INTO default.ip_addresses VALUES
+(1, 'Device A', '2001:0db8:85a3:0000:0000:8a2e:0370:7334', '2024-11-01 12:00:00'),
+(2, 'Device B', '192.168.0.1', '2024-11-01 12:05:00'),
+(3, 'Device C', '2001:0db8:85a3:0000:0000:8a2e:0370:7335', '2024-11-01 12:10:00'),
+(4, 'Device D', '192.168.0.2', '2024-11-01 12:15:00'),
+(5, 'Device E', '2001:0db8:85a3:0000:0000:8a2e:0370:7334', '2024-11-01 12:20:00'),
+(6, 'Device F', '192.168.0.1', '2024-11-01 12:25:00');
+
+-- Aggregating the count of distinct IP addresses (IPv4 and IPv6 combined)
+SELECT
+    ip_address,
+    COUNT(*) AS ip_count  -- Count the number of occurrences of each IP address
+FROM
+    default.ip_addresses
+GROUP BY ip_address
+ORDER BY ip_count DESC;
+
+-- Expected Output (for reference):
+-- ┌───────────────────────────────────────────────────────────────────────┬─ip_count─┐
+-- │ ip_address                                                           │ ip_count │
+-- ├───────────────────────────────────────────────────────────────────────┼──────────┤
+-- │ 2001:0db8:85a3:0000:0000:8a2e:0370:7334                              │        2 │
+-- │ 192.168.0.1                                                          │        2 │
+-- │ 2001:0db8:85a3:0000:0000:8a2e:0370:7335                              │        1 │
+-- │ 192.168.0.2                                                          │        1 │
+-- └───────────────────────────────────────────────────────────────────────┴──────────┘
