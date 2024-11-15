@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-# Simulated Redis data
+# Simulated data, similar to SQL example, for Redis
 redis_flowers = {
     "flower_1": {"name": "Rose", "color": "Red"},
     "flower_2": {"name": "Lily", "color": "White"},
@@ -17,7 +17,7 @@ redis_flower_properties = {
 def migrate_redis_to_mongodb(redis_flowers, redis_flower_properties):
     # Generate a timestamp for the migration
     timestamp = datetime.now().isoformat()
-    
+
     # Step 1: Convert Redis flower_properties to a dictionary with metadata added
     properties_dict = {
         key: {
@@ -30,7 +30,7 @@ def migrate_redis_to_mongodb(redis_flowers, redis_flower_properties):
             }
         } for key, prop in redis_flower_properties.items()
     }
-    
+
     # Step 2: Merge Redis flowers with properties using IDs and add metadata
     mongo_data = [
         {
@@ -44,7 +44,7 @@ def migrate_redis_to_mongodb(redis_flowers, redis_flower_properties):
             }
         } for key, flower in redis_flowers.items()
     ]
-    
+
     return mongo_data
 
 # Usage
