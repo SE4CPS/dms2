@@ -1,0 +1,40 @@
+-- Create the table schema with an ENUM type column for flower type
+CREATE TABLE default.flower_enum
+(
+    id UInt32,
+    name String,
+    flower_type ENUM('Rose', 'Tulip', 'Lily', 'Daffodil', 'Orchid'),  -- ENUM column for flower types
+    price DECIMAL(10, 2),
+    planting_year UInt16
+)
+ENGINE = MergeTree()
+ORDER BY id;
+
+-- Insert sample data into the flower_enum table
+INSERT INTO default.flower_enum VALUES
+(1, 'Rose', 'Rose', 12.50, 2015),
+(2, 'Tulip', 'Tulip', 10.00, 2017),
+(3, 'Lily', 'Lily', 8.75, 2015),
+(4, 'Daffodil', 'Daffodil', 5.50, 2020),
+(5, 'Orchid', 'Orchid', 20.00, 2021),
+(6, 'Rose', 'Rose', 13.00, 2016),
+(7, 'Tulip', 'Tulip', 9.50, 2018);
+
+-- Aggregate the average price and count based on flower_type (ENUM)
+SELECT
+    flower_type,
+    COUNT(*) AS flower_count,
+    AVG(price) AS avg_price
+FROM
+    default.flower_enum
+GROUP BY flower_type
+ORDER BY avg_price DESC;
+
+-- Expected Output (for reference):
+-- ┌─flower_type─┬─flower_count─┬─avg_price─┐
+-- │ Rose        │            2 │    12.75 │
+-- │ Orchid      │            1 │    20.00 │
+-- │ Lily        │            1 │     8.75 │
+-- │ Tulip       │            2 │     9.75 │
+-- │ Daffodil    │            1 │     5.50 │
+-- └─────────────┴──────────────┴──────────┘
