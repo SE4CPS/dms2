@@ -1,1 +1,44 @@
 
+CREATE TABLE default.flower
+(
+    id UInt32,
+    name String,
+    colors Nested(color_name String),         -- Nested column for colors
+    planting_dates Nested(
+        planting_year UInt16,                 -- Nested column for planting year
+        region String                          -- Nested column for planting region
+    )
+)
+ENGINE = MergeTree()
+ORDER BY id;
+
+-- Example 1: Aggregating Nested Colors
+SELECT
+    color_name,
+    COUNT(*) AS color_count
+FROM
+    default.flower
+ARRAY JOIN colors.color_name  -- Unroll the nested color names into individual rows
+GROUP BY color_name
+ORDER BY color_count DESC;
+
+-- Example 2: Aggregating Nested Planting Years
+SELECT
+    name,
+    AVG(planting_dates.planting_year) AS avg_planting_year
+FROM
+    default.flower
+ARRAY JOIN planting_dates.planting_year  -- Unroll the nested planting_years into individual rows
+GROUP BY name
+ORDER BY avg_planting_year DESC;
+
+-- Example 3: Aggregating Based on Multiple Nested Columns
+SELECT
+    name,
+    planting_dates.region AS region,
+    COUNT(*) AS region_count
+FROM
+    default.flower
+ARRAY JOIN planting_dates.planting_year, planting_dates.region  -- Unroll both planting year and region
+GROUP BY name, region
+ORDER BY region_count DESC;
