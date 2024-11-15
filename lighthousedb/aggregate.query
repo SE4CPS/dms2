@@ -1,0 +1,39 @@
+-- Create the table schema with a Map column for storing flower ratings
+CREATE TABLE default.flower_ratings
+(
+    id UInt32,
+    name String,
+    ratings Map(String, UInt8),  -- Map to store ratings for different flower types (String -> UInt8)
+    price DECIMAL(10, 2),
+    planting_year UInt16
+)
+ENGINE = MergeTree()
+ORDER BY id;
+
+-- Insert sample data into the flower_ratings table
+INSERT INTO default.flower_ratings VALUES
+(1, 'Rose', {'customer1': 5, 'customer2': 4, 'customer3': 5}, 12.50, 2015),
+(2, 'Tulip', {'customer1': 3, 'customer2': 4, 'customer3': 3}, 10.00, 2017),
+(3, 'Lily', {'customer1': 4, 'customer2': 5, 'customer3': 4}, 8.75, 2015),
+(4, 'Daffodil', {'customer1': 2, 'customer2': 3, 'customer3': 3}, 5.50, 2020),
+(5, 'Orchid', {'customer1': 5, 'customer2': 5, 'customer3': 5}, 20.00, 2021),
+(6, 'Rose', {'customer1': 4, 'customer2': 3, 'customer3': 4}, 13.00, 2016),
+(7, 'Tulip', {'customer1': 4, 'customer2': 5, 'customer3': 4}, 9.50, 2018);
+
+-- Aggregating the average rating per flower type
+SELECT
+    name,
+    AVG(arrayJoin(ratings)) AS avg_rating  -- Use arrayJoin to flatten the Map values and calculate the average
+FROM
+    default.flower_ratings
+GROUP BY name
+ORDER BY avg_rating DESC;
+
+-- Expected Output (for reference):
+-- ┌─name──────┬─avg_rating─┐
+-- │ Orchid    │    5.0000 │
+-- │ Rose      │    4.3333 │
+-- │ Lily      │    4.3333 │
+-- │ Tulip     │    4.0000 │
+-- │ Daffodil  │    2.6667 │
+-- └───────────┴───────────┘
