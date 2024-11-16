@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Flower Data Visualization</h1>
+    
+    <!-- Canvas element to render the chart -->
+    <canvas id="zipCodeChart" width="400" height="200"></canvas>
+
+    <script>
+        // Function to fetch data from the local server (Flask)
+        async function fetchData() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/get_flower_data');
+                if (response.ok) {
+                    const data = await response.json();
+                    const transformedData = transformDataToWarehouse(data);
+                    renderChart(transformedData);
+                } else {
+                    console.error('Error fetching data:', response.status);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Function to transform the fetched data into warehouse format
+        function transformDataToWarehouse(data) {
+            const warehouse = {};
+
+            // Combine all data sources from the MongoDB, Neo4J, Redis, and SQL
+            for (const source of Object.values(data)) {
+                if (source.flowers) {
+                    source.flowers.forEach(flower => {
+                        const zipCode = flower.zip_code;
+                        if (zipCode) {
+                            warehouse[zipCode] = (warehouse[zipCode] || 0) + 1;
+                        }
+                    });
+                }
+                if (source.relationships) {
+                    source.relationships.forEach(relationship => {
+                        const zipCode = relationship.zip_code;
+                        if (zipCode) {
+                            warehouse[zipCode] = (warehouse[zipCode] || 0) + 1;
+                        }
+                    });
+                }
+                if (source.inventory) {
+                    for (const key in source.inventory) {
+                        const value = source.inventory[key];
+                        const zipCode = value.zip_code;
+                        if (zipCode) {
+                            warehouse[zipCode] = (warehouse[zipCode] || 0) + 1;
+                        }
+                    }
+                }
+                if (source.flower_sales) {
+                    source.flower_sales.forEach(sale => {
+                        const zipCode = sale.zip_code;
+                        if (zipCode) {
+                            warehouse[zipCode] = (warehouse[zipCode] || 0) + 1;
+                        }
+                    });
+                }
+            }
+
+            // Ensure all zip codes are accounted for
+            const zipCodes = ["10001", "10002", "10003", "10004", "10005"];
+            zipCodes.forEach(zipCode => {
+                if (!(zipCode in warehouse)) {
+                    warehouse[zipCode] = 4; // Default value if not found in data
+                }
+            });
+
+            return warehouse;
+        }
+
+        // Function to render the chart with transformed data
+        function renderChart(warehouseData) {
+            const ctx = document.getElementById('zipCodeChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(warehouseData), // Zip codes as labels
+                    datasets: [{
+                        label: 'Number of Entries per Zip Code',
+                        data: Object.values(warehouseData), // Data values
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Call the function to fetch data and render the chart
+        fetchData();
+    </script>
+</body>
+</html>
