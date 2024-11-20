@@ -1,10 +1,5 @@
 import json
-
-from flask import Flask, jsonify
 import requests
-
-
-app = Flask(__name__)
 
 def fetch_data_from_server(url):
     response = requests.get(url)
@@ -28,19 +23,6 @@ def create_data_lake(data):
         lake.append({"db": "SQL", "flower": sale})
     return lake
 
-@app.route("/get_data_from_lake", methods=["GET"])
-def get_data_from_lake():
-    from etl import get_data_from_mongodb, get_data_from_redis, get_data_from_neo4j, get_data_from_sql
-
-    data = {
-        "MongoDB": get_data_from_mongodb(),
-        "Neo4J": get_data_from_neo4j(),
-        "SQL": get_data_from_sql(),
-        "Redis": get_data_from_redis(),
-    }
-
-    return jsonify(data)
-
 def save_data_lake_to_js(lake):
     with open("lake.js", "w") as f:
         f.write(f"const lake = {json.dumps(lake, indent=2)};\n")
@@ -63,12 +45,4 @@ def main():
 
 
 if __name__ == "__main__":
-    from threading import Thread
-
-    def run_flask():
-        app.run(debug=True, use_reloader=False, port=5001)
-
-    flask_thread = Thread(target=run_flask)
-    flask_thread.start()
-
     main()
