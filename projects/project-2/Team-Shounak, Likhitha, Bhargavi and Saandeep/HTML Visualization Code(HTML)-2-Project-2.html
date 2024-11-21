@@ -1,0 +1,82 @@
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <h2>Flower Stock and Count per Zip Code</h2>
+    <canvas id="lineChart" width="400" height="200"></canvas>
+
+    <script>
+      const flowerData = [
+        { zip_code: '10001', stock: 50 },
+        { zip_code: '10002', stock: 30 },
+        { zip_code: '10003', stock: 40 },
+        { zip_code: '10004', stock: 60 },
+        { zip_code: '10005', stock: 70 },
+        { zip_code: '10001', stock: 20 },
+        { zip_code: '10002', stock: 50 },
+        { zip_code: '10003', stock: 30 },
+        { zip_code: '10005', stock: 10 }
+      ];
+
+      // Step 1: Aggregate Data by Zip Code
+      const aggregatedData = flowerData.reduce((acc, curr) => {
+        if (acc[curr.zip_code]) {
+          acc[curr.zip_code].stock += curr.stock;  // Sum of stock per zip code
+          acc[curr.zip_code].count += 1;  // Count of flower entries per zip code
+        } else {
+          acc[curr.zip_code] = { stock: curr.stock, count: 1 };
+        }
+        return acc;
+      }, {});
+
+      // Prepare Data for Chart
+      const zipCodes = Object.keys(aggregatedData);
+      const totalStock = zipCodes.map(zip => aggregatedData[zip].stock);
+      const flowerCount = zipCodes.map(zip => aggregatedData[zip].count);
+
+      // Step 2: Create Line Chart
+      const ctx = document.getElementById('lineChart').getContext('2d');
+      const lineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: zipCodes,  // X-axis: Zip Codes
+          datasets: [{
+            label: 'Total Flower Stock',
+            data: totalStock,  // Y-axis: Total Stock
+            borderColor: 'green',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1,
+            pointRadius: 5
+          }, {
+            label: 'Flower Count',
+            data: flowerCount,  // Y-axis: Flower Count
+            borderColor: 'blue',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1,
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Zip Code'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Value'
+              }
+            }
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

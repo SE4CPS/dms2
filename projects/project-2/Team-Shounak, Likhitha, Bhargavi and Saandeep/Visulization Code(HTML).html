@@ -1,0 +1,43 @@
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <canvas id="lineChart" width="400" height="200"></canvas>
+    <script>
+      const ctx = document.getElementById('lineChart').getContext('2d');
+      const lineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['10001', '10002', '10003', '10004', '10005'], // Zip codes
+          datasets: [{
+            label: 'Total Flower Stock',
+            data: [50, 30, 40, 60, 70], // Total stock per zip code
+            borderColor: 'green',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1,
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { 
+              title: {
+                display: true,
+                text: 'Zip Code'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Total Stock'
+              }
+            }
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
