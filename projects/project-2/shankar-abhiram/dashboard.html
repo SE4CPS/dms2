@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Warehouse Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #myChart {
+            max-width: 600px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Data Warehouse - Zip Code Counts</h1>
+    <canvas id="myChart"></canvas>
+    <script>
+        // Sample data, replace this with the actual data from Python backend
+        const warehouseData = {
+            "10001": 50,
+            "10002": 30,
+            "10003": 70,
+            "10004": 20
+        };
+
+        const zipCodes = Object.keys(warehouseData);
+        const counts = Object.values(warehouseData);
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: zipCodes,
+                datasets: [{
+                    label: 'Count of Entries per Zip Code',
+                    data: counts,
+                    backgroundColor: '#4e73df',
+                    borderColor: '#4e73df',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
