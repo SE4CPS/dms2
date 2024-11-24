@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zip Code Count Distribution</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h2>Zip Code Count Distribution</h2>
+    <div id="bar-chart"></div>
+
+    <script>
+        // Data for the chart
+        var zipCodes = ['10001', '10002', '10003', '10004', '10005'];
+        var counts = [4, 4, 4, 4, 4];
+
+        // Create the bar chart using Plotly
+        var trace = {
+            x: zipCodes,
+            y: counts,
+            type: 'bar',
+            marker: { color: 'skyblue' }
+        };
+
+        var layout = {
+            title: 'Zip Code Count Distribution',
+            xaxis: {
+                title: 'Zip Code'
+            },
+            yaxis: {
+                title: 'Count'
+            }
+        };
+
+        // Render the chart in the div with id 'bar-chart'
+        Plotly.newPlot('bar-chart', [trace], layout);
+    </script>
+</body>
+</html>
