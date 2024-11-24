@@ -1,1 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Flower Data Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+  <h1>Flower Data Dashboard</h1>
+  <button id="updateButton">Update Dashboard</button>
+  <canvas id="Dashboard" width="400" height="200"></canvas>
+  <script>
+    // Global variables for the chart and lake data
+    let chart;
+    let lake = [];
+
+    // Function to fetch data and update the dashboard
+    function fetchAndUpdateDashboard() {
+      $.getJSON("http://localhost:5000/get_flower_data", function (jsonData) {
+        // Clear the lake array
+        lake = [];
+
+        // Process JSON data
+        for (const db in jsonData) {
+          const database = jsonData[db];
+          const databaseName = database.database; // Get the database name
+
+          if (database.flowers) {
+            database.flowers.forEach(flower => {
+              lake.push({ db: databaseName, ...flower });
+            });
+          }
+
+          if (database.relationships) {
+            database.relationships.forEach(rel => {
+              lake.push({ db: databaseName, flower: rel.flower, zip_code: rel.zip_code , related_to: rel.related_to });
+            });
+          }
+
+          if (database.inventory) {
+            Object.keys(database.inventory).forEach(flowerName => {
+              const inventoryData = database.inventory[flowerName];
+              lake.push({
+                db: databaseName,
+                flower: flowerName,
+                zip_code: inventoryData.zip_code,
+                quantity: inventoryData.quantity,
+                last_restock: inventoryData.last_restock
+              });
+            });
+          }
+
+          if (database.flower_sales) {
+            database.flower_sales.forEach(sale => {
+              lake.push({ db: databaseName, flower: sale.name, zip_code: sale.zip_code , revenue: sale.revenue, units_sold: sale.units_sold });
+            });
+          }
+        }
+
+        // Update the dashboard with the new data
+        updateDashboard(lake);
+        console.log(lake);
+      });
+    }
+
+    // Function to update the dashboard
+    function updateDashboard(lake) {
+      // Map-Filter-Reduce to aggregate zip code counts
+      const warehouse = lake
+        .filter(entry => entry.zip_code) // Keep entries with a zip code
+        .map(entry => entry.zip_code) // Extract zip codes
+        .reduce((acc, zip) => {
+          acc[zip] = (acc[zip] || 0) + 1;
+          return acc;
+        }, {});
+
+      // If a chart exists, destroy it to prevent duplication
+      if (chart) {
+        chart.destroy();
+      }
+
+      // Initialize Chart.js
+      const ctx = document.getElementById('Dashboard').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(warehouse), // Zip codes as labels
+          datasets: [{
+            label: 'Number of Entries',
+            data: Object.values(warehouse), // Counts as data
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // Fetch and update the dashboard on page load
+    fetchAndUpdateDashboard();
+
+    // Add event listener to the button
+    document.getElementById('updateButton').addEventListener('click', fetchAndUpdateDashboard);
+  </script>
+</body>
+</html>
 
