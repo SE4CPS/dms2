@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lake Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #ddd;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Flower Dashboard</h1>
+    <canvas id="myBarChart" width="400" height="200"></canvas>
+    <script>
+        let lake = [];
+        const url = "http://localhost:5000/get_flower_data";
+
+        // Please review lines 42 until 50        
+        fetch(url, {
+            method: 'GET',
+            header: {
+                'Content-Type': 'application/json'
+            },
+        }).then(function (response) {
+            response.json()
+                .then(function (data) {
+                    console.log(data);
+                    for (let key in data) {
+                        if (key == "MongoDB") {
+                            lake = lake.concat(data[key]["flowers"]);
+                        } else if (key == "Neo4J") {
+                            lake = lake.concat(data[key]["relationships"]);
+                        } else if (key == "Redis") {
+                            for (let flower in data[key]["inventory"]) {
+                                lake = lake.concat(data[key]["inventory"][flower]);
+                            }
+                        } else if (key == "SQL") {
+                            lake = lake.concat(data[key]["flower_sales"]);
+                        }
+                    }
+
+                    // Please review the lines 67 - 77 ....
+                    let zipCodes = lake.map(item => item.zip_code);
+                    const countWithReduce = array => array.reduce((acc, item) => { acc[item] = (acc[item] || 0) + 1; return acc; }, {});
+                    let labelArray = [];
+                    let zipCodeArray = [];
+                    let countZipCodeArray = countWithReduce(zipCodes);
+
+                    for (let key in countZipCodeArray) {
+                        labelArray.push(key);
+                        zipCodeArray.push(countZipCodeArray[key]);
+                    }
+                    console.log(labelArray, zipCodeArray);
+
+                    // Get the canvas element
+                    const ctx = document.getElementById('myBarChart').getContext('2d');
+
+                    // Create the bar chart
+                    const myBarChart = new Chart(ctx, {
+                        type: 'bar', // Specify chart type
+                        data: {
+                            labels: labelArray, // X-axis labels
+                            datasets: [{
+                                label: 'Zipcode_Count', // Dataset label
+                                data: zipCodeArray, // Data for each bar
+                                backgroundColor: [
+                                    'rgba(255, 99, 132, 0.2)',
+                                    'rgba(54, 162, 235, 0.2)'
+                                ],
+                                borderColor: [
+                                    'rgba(255, 99, 132, 1)',
+                                    'rgba(54, 162, 235, 1)'
+                                ],
+                                borderWidth: 1 // Bar border width
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true // Ensure y-axis starts at 0
+                                }
+                            }
+                        }
+                    });
+
+                }).then(function (data) {
+                    console.log(data);
+                }).catch(function (err) {
+                    console.log('Fetch Error :-S', err);
+                });
+        });
+
+    </script>
+</body>
+
+</html>
