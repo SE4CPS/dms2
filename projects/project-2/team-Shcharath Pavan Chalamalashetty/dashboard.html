@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zip Code Entries Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #dashboard {
+            width: 80%;
+            max-width: 800px;
+        }
+        canvas {
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div id="dashboard">
+        <h2>Entries per Zip Code</h2>
+        <canvas id="zipCodeChart"></canvas>
+    </div>
+
+    <script>
+        // The transformed warehouse object from the previous steps
+        var warehouse = {
+            "10001": 4,
+            "10002": 4,
+            "10003": 4,
+            "10004": 4,
+            "10005": 4
+        };
+
+        // Prepare the data for the bar chart
+        var labels = Object.keys(warehouse);  // Extract zip codes as labels
+        var counts = Object.values(warehouse);  // Extract counts as data values
+
+        // Create the bar chart using Chart.js
+        var ctx = document.getElementById('zipCodeChart').getContext('2d');
+        var zipCodeChart = new Chart(ctx, {
+            type: 'bar',  // Bar chart type
+            data: {
+                labels: labels,  // Zip code labels
+                datasets: [{
+                    label: 'Count of Entries',
+                    data: counts,  // Corresponding count of entries per zip code
+                    backgroundColor: '#4e73df',  // Bar color
+                    borderColor: '#2e59d9',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

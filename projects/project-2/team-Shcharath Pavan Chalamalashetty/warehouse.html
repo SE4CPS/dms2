@@ -1,0 +1,9 @@
+<script>
+    var warehouse = lake
+      .map(entry => entry.flower.zip_code)  // Extract zip codes from the flower data
+      .reduce((acc, zipCode) => {
+        acc[zipCode] = (acc[zipCode] || 0) + 1;  // Count entries for each zip code
+        return acc;
+      }, {});  // Initialize as an empty object
+  </script>
+  
