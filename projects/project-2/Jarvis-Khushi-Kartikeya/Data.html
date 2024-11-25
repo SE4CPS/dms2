@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Data Lake</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <h1>Data Lake</h1>
+    <p>Open the console to view the "lake" and transformed "warehouse" data.</p>
+    <canvas
+      id="zipCodeChart"
+      width="300"
+      height="150"
+    ></canvas>
+
+    <script>
+      fetch("http://127.0.0.1:5000/get_flower_data")
+        .then((response) => response.json())
+        .then((data) => {
+          const lake = data;
+          console.log("Lake data:", lake);
+
+          const warehouse = lake
+            .filter((item) => item.zip_code)
+            .map((item) => item.zip_code)
+            .reduce((acc, zip_code) => {
+              if (acc[zip_code]) {
+                acc[zip_code] += 1;
+              } else {
+                acc[zip_code] = 1;
+              }
+              return acc;
+            }, {});
+
+          console.log("Warehouse data:", warehouse);
+
+          const zipCodes = Object.keys(warehouse);
+          const counts = Object.values(warehouse);
+
+          const pastelColors = {
+            10001: "#FFB3BA",
+            10002: "#FFDFBA",
+            10003: "#FFFFBA",
+            10004: "#BAFFC9",
+            10005: "#BAE1FF",
+          };
+
+          const barColors = zipCodes.map((zip_code) => pastelColors[zip_code]);
+
+          const ctx = document.getElementById("zipCodeChart").getContext("2d");
+          const zipCodeChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: zipCodes,
+              datasets: [
+                {
+                  label: "Count of Entries per Zip Code",
+                  data: counts,
+                  backgroundColor: barColors,
+                  borderColor: barColors.map((color) =>
+                    color.replace("0.6", "1")
+                  ),
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: {
+              scales: {
+                y: {
+                  beginAtZero: true,
+                },
+              },
+            },
+          });
+        })
+        .catch((error) => console.error("Error fetching data:", error));
+    </script>
+  </body>
+</html>
