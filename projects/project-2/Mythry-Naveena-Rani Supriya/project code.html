@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Warehouse Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        canvas {
+            max-width: 700px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Data Warehouse Visualization</h1>
+    <button id="fetchDataButton">Fetch and Visualize Data</button>
+
+    <h2>Bar Chart</h2>
+    <canvas id="barChart"></canvas>
+
+    <h2>Pie Chart</h2>
+    <canvas id="pieChart"></canvas>
+
+    <h2>Line Chart</h2>
+    <canvas id="lineChart"></canvas>
+
+    <script>
+        // Step 1: Fetch Data from Localhost
+        async function fetchDataFromLocalhost() {
+            const url = "http://localhost:5000/get_flower_data";
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("Failed to fetch data:", error);
+                return null;
+            }
+        }
+
+        // Step 2: Create Data Lake
+        function createDataLake(data) {
+            const lake = [];
+
+            // Flatten MongoDB data
+            if (data.MongoDB) {
+                lake.push(...data.MongoDB.flowers);
+            }
+
+            // Flatten Neo4J data
+            if (data.Neo4J) {
+                lake.push(...data.Neo4J.relationships);
+            }
+
+            // Flatten Redis data
+            if (data.Redis) {
+                const redisData = data.Redis.inventory;
+                for (const [key, details] of Object.entries(redisData)) {
+                    lake.push({ zip_code: details.zip_code, source: "Redis", flower: key });
+                }
+            }
+
+            // Flatten SQL data
+            if (data.SQL) {
+                lake.push(...data.SQL.flower_sales);
+            }
+
+            return lake;
+        }
+
+        // Step 3: Transform Data Lake to Warehouse
+        function transformDataLakeToWarehouse(lake) {
+            // Map: Extract zip codes
+            const zipCodes = lake.map(item => item.zip_code);
+
+            // Filter: Ensure only valid zip codes
+            const validZipCodes = zipCodes.filter(zip => /^\d+$/.test(zip));
+
+            // Reduce: Count occurrences of each zip code
+            const warehouse = {};
+            validZipCodes.forEach(zip => {
+                warehouse[zip] = (warehouse[zip] || 0) + 1;
+            });
+
+            return warehouse;
+        }
+
+        // Step 4: Bar Chart Visualization
+        function renderBarChart(warehouse) {
+            const ctx = document.getElementById('barChart').getContext('2d');
+            const zipCodes = Object.keys(warehouse);
+            const counts = Object.values(warehouse);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: zipCodes,
+                    datasets: [{
+                        label: 'Count of Entries',
+                        data: counts,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Zip Code'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Count of Entries'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Step 5: Pie Chart Visualization
+        function renderPieChart(warehouse) {
+            const ctx = document.getElementById('pieChart').getContext('2d');
+            const zipCodes = Object.keys(warehouse);
+            const counts = Object.values(warehouse);
+
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: zipCodes,
+                    datasets: [{
+                        label: 'Count Distribution',
+                        data: counts,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.6)',
+                            'rgba(54, 162, 235, 0.6)',
+                            'rgba(255, 206, 86, 0.6)',
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(153, 102, 255, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Step 6: Line Chart Visualization
+        function renderLineChart(warehouse) {
+            const ctx = document.getElementById('lineChart').getContext('2d');
+            const zipCodes = Object.keys(warehouse);
+            const counts = Object.values(warehouse);
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: zipCodes,
+                    datasets: [{
+                        label: 'Count Trend',
+                        data: counts,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Zip Code'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Count of Entries'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Main Function
+        async function main() {
+            const data = await fetchDataFromLocalhost();
+            if (!data) {
+                alert("Failed to fetch data. Check console for details.");
+                return;
+            }
+
+            // Create data lake
+            const lake = createDataLake(data);
+
+            // Transform data lake to warehouse
+            const warehouse = transformDataLakeToWarehouse(lake);
+
+            // Render visualizations
+            renderBarChart(warehouse);
+            renderPieChart(warehouse);
+            renderLineChart(warehouse);
+        }
+
+        // Attach event listener to the button
+        document.getElementById('fetchDataButton').addEventListener('click', main);
+    </script>
+</body>
+</html>
