@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flower Data Visualization</title>
+</head>
+<body>
+    <h1>Flower Data Visualization</h1>
+    <button id="updateButton">Update Data</button>
+    <canvas id="barChart" width="800" height="400"></canvas>
+
+    <script>
+        async function fetchData() {
+            const response = await fetch('http://127.0.0.1:5000/get_flower_data');
+            return await response.json();
+        }
+
+        async function extractData() {
+            const data = await fetchData();
+            const lake = [];
+
+            data.MongoDB.flowers.forEach(flower => {
+                lake.push({ ...flower, db: "MongoDB" });
+            });
+
+            data.Neo4J.relationships.forEach(rel => {
+                lake.push({ flower: rel.flower, zip_code: rel.zip_code, related_to: rel.related_to , db: "Neo4J" });
+            });
+
+            Object.keys(data.Redis.inventory).forEach(key => {
+                const item = data.Redis.inventory[key];
+                lake.push({ flower: key, zip_code: item.zip_code, quantity:item.quantity, last_restock: item.last_restock, db: "Redis" });
+            });
+
+            data.SQL.flower_sales.forEach(sale => {
+                lake.push({ ...sale, db: "SQL" });
+            });
+
+            console.log(lake);
+
+            return lake;
+        }
+
+        async function transformData() {
+            const lake = await extractData();
+            const warehouse = lake.reduce((acc, obj) => {
+                acc[obj.zip_code] = (acc[obj.zip_code] || 0) + 1;
+                return acc;
+            }, {});
+            return warehouse;
+        }
+
+        async function loadChart() {
+            const warehouse = await transformData();
+            const canvas = document.getElementById('barChart');
+            const ctx = canvas.getContext('2d');
+            const labels = Object.keys(warehouse);
+            const values = Object.values(warehouse);
+            const chartWidth = canvas.width;
+            const chartHeight = canvas.height;
+            const barWidth = chartWidth / labels.length;
+            const maxVal = Math.max(...values);
+
+            ctx.clearRect(0, 0, chartWidth, chartHeight);
+
+            labels.forEach((label, index) => {
+                const barHeight = (values[index] / maxVal) * (chartHeight - 50);
+
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(
+                    index * barWidth + 10,
+                    chartHeight - barHeight,
+                    barWidth - 20,
+                    barHeight
+                );
+
+                ctx.fillStyle = 'black';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, index * barWidth + barWidth / 2, chartHeight - 10);
+                ctx.fillText(values[index], index * barWidth + barWidth / 2, chartHeight - barHeight - 10);
+            });
+        }
+
+        document.getElementById('updateButton').addEventListener('click', loadChart);
+
+        loadChart();
+    </script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+{
+  "MongoDB": {
+    "database": "MongoDB",
+    "flowers": [
+      {
+        "color": "Red",
+        "name": "Rose",
+        "price": 10,
+        "stock": 100,
+        "zip_code": "10001"
+      },
+      {
+        "color": "Yellow",
+        "name": "Tulip",
+        "price": 7,
+        "stock": 150,
+        "zip_code": "10002"
+      },
+      {
+        "color": "Purple",
+        "name": "Orchid",
+        "price": 15,
+        "stock": 80,
+        "zip_code": "10003"
+      },
+      {
+        "color": "Yellow",
+        "name": "Sunflower",
+        "price": 5,
+        "stock": 200,
+        "zip_code": "10004"
+      },
+      {
+        "color": "White",
+        "name": "Daisy",
+        "price": 3,
+        "stock": 300,
+        "zip_code": "10005"
+      }
+    ]
+  },
+  "Neo4J": {
+    "database": "Neo4J",
+    "relationships": [
+      {
+        "flower": "Rose",
+        "related_to": "Gift Bouquet",
+        "zip_code": "10001"
+      },
+      {
+        "flower": "Tulip",
+        "related_to": "Spring Collection",
+        "zip_code": "10002"
+      },
+      {
+        "flower": "Orchid",
+        "related_to": "Exotic Collection",
+        "zip_code": "10003"
+      },
+      {
+        "flower": "Sunflower",
+        "related_to": "Summer Collection",
+        "zip_code": "10004"
+      },
+      {
+        "flower": "Daisy",
+        "related_to": "Wedding Bouquet",
+        "zip_code": "10005"
+      }
+    ]
+  },
+  "Redis": {
+    "database": "Redis",
+    "inventory": {
+      "Daisy": {
+        "last_restock": "2023-10-09",
+        "quantity": 300,
+        "zip_code": "10005"
+      },
+      "Orchid": {
+        "last_restock": "2023-10-05",
+        "quantity": 80,
+        "zip_code": "10003"
+      },
+      "Rose": {
+        "last_restock": "2023-10-01",
+        "quantity": 100,
+        "zip_code": "10001"
+      },
+      "Sunflower": {
+        "last_restock": "2023-10-07",
+        "quantity": 200,
+        "zip_code": "10004"
+      },
+      "Tulip": {
+        "last_restock": "2023-10-03",
+        "quantity": 150,
+        "zip_code": "10002"
+      }
+    }
+  },
+  "SQL": {
+    "database": "SQL",
+    "flower_sales": [
+      {
+        "name": "Rose",
+        "revenue": 500,
+        "units_sold": 50,
+        "zip_code": "10001"
+      },
+      {
+        "name": "Tulip",
+        "revenue": 490,
+        "units_sold": 70,
+        "zip_code": "10002"
+      },
+      {
+        "name": "Orchid",
+        "revenue": 450,
+        "units_sold": 30,
+        "zip_code": "10003"
+      },
+      {
+        "name": "Sunflower",
+        "revenue": 450,
+        "units_sold": 90,
+        "zip_code": "10004"
+      },
+      {
+        "name": "Daisy",
+        "revenue": 360,
+        "units_sold": 120,
+        "zip_code": "10005"
+      }
+    ]
+  }
+}
