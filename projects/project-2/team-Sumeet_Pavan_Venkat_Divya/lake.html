@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data-Warehouse Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+</head>
+<body>
+    <h1>Zip Code Entries Count</h1>
+    <canvas id="myChart" style="width:100%;max-width:700px"></canvas>
+  <script>
+    const fetchAndDataExtraction = async () => {
+      let lake = [];
+      try {
+        const response = await fetch("http://localhost:5000/get_flower_data");
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        const data = await response.json();
+        console.log("Flower data:", data);
+
+        const mongoData = data["MongoDB"];
+        console.log("Mongo data is ", mongoData);
+        
+        const neo4jData = data["Neo4J"];
+        console.log("Neo4j data is ", neo4jData);
+        
+        const redisData = data["Redis"];
+        console.log("Redis data is ", redisData);
+
+        const sqlData = data["SQL"];
+        console.log("SQL data is ", sqlData);
+
+        lake = lake.concat(
+          mongoData.flowers.map((flower) => ({ ...flower, db: "mongodb" }))
+        );
+        lake = lake.concat(
+          neo4jData.relationships.map((rel) => ({ ...rel, db: "neo4j" }))
+        );
+        lake = lake.concat(
+          Object.entries(redisData.inventory).map(([flower, data]) => ({
+            name: flower,
+            ...data,
+            db: "redis",
+          }))
+        );
+        lake = lake.concat(
+          sqlData.flower_sales.map((sale) => ({ ...sale, db: "sql" }))
+        );
+
+        console.log("Final Lake is ", lake);
+        return lake;
+      } catch (error) {
+        console.error("Error fetching flower data:", error);
+        return [];
+      }
+    };
+
+    const warehouse = async () => {
+      try {
+        const finalLake = await fetchAndDataExtraction();
+        console.log("Lake data is now available");
+        const warehouse = finalLake.reduce((acc, item) => {
+          const zip = item.zip_code;
+          if (!acc[zip]) {
+            acc[zip] = { zip_code: zip, count: 0 };
+          }
+          acc[zip].count += 1;
+          return acc;
+        }, {});
+
+        console.log("Warehouse data:", warehouse);
+        const labels = Object.keys(warehouse);
+        const counts = labels.map(zip => warehouse[zip].count)
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Count of Entries',
+                    data: counts,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
+                }
+            }
+        });
+        return warehouse;
+      } catch (error) {
+        console.error("Error processing data:", error);
+      }
+    };
+
+    warehouse();
+  </script>
+</html>
