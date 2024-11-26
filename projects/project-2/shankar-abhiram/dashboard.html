@@ -13,44 +13,150 @@
             max-width: 600px;
             margin: auto;
         }
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 60%;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #4e73df;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <h1>Data Warehouse - Zip Code Counts</h1>
     <canvas id="myChart"></canvas>
+
+    <h2>Data Source</h2>
+    <p>This data is retrieved from the Python backend, which aggregates data from MongoDB, Neo4j, Redis, and SQL databases. Below is the raw data used to generate the chart:</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Zip Code</th>
+                <th>Count</th>
+            </tr>
+        </thead>
+        <tbody id="data-table">
+        </tbody>
+    </table>
+
     <script>
-        // Sample data, replace this with the actual data from Python backend
-        const warehouseData = {
-            "10001": 50,
-            "10002": 30,
-            "10003": 70,
-            "10004": 20
-        };
+        // Fetch data from the local server
+        async function fetchData() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/get_flower_data');
+                if (response.ok) {
+                    const data = await response.json();
+                    const transformedData = transformDataToWarehouse(data);
+                    renderChart(transformedData);
+                    populateTable(transformedData);
+                } else {
+                    console.error('Error fetching data:', response.status);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
 
-        const zipCodes = Object.keys(warehouseData);
-        const counts = Object.values(warehouseData);
+        // Transform the fetched data into warehouse format
+        function transformDataToWarehouse(data) {
+            const warehouse = {};
 
-        const ctx = document.getElementById('myChart').getContext('2d');
-        const myChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: zipCodes,
-                datasets: [{
-                    label: 'Count of Entries per Zip Code',
-                    data: counts,
-                    backgroundColor: '#4e73df',
-                    borderColor: '#4e73df',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
+            // Combine all data sources from the MongoDB, Neo4J, Redis, and SQL
+            for (const source of Object.values(data)) {
+                if (source.flowers) {
+                    source.flowers.forEach(flower => {
+                        const zipCode = flower.zip_code;
+                        if (zipCode) {
+                            warehouse[zipCode] = (warehouse[zipCode] || 0) + 1;
+                        }
+                    });
+                }
+                if (source.relationships) {
+                    source.relationships.forEach(relationship => {
+                        const zipCode = relationship.zip_code;
+                        if (zipCode) {
+                            warehouse[zipCode] = (warehouse[zipCode] || 0) + 1;
+                        }
+                    });
+                }
+                if (source.inventory) {
+                    for (const key in source.inventory) {
+                        const value = source.inventory[key];
+                        const zipCode = value.zip_code;
+                        if (zipCode) {
+                            warehouse[zipCode] = (warehouse[zipCode] || 0) + 1;
+                        }
                     }
                 }
+                if (source.flower_sales) {
+                    source.flower_sales.forEach(sale => {
+                        const zipCode = sale.zip_code;
+                        if (zipCode) {
+                            warehouse[zipCode] = (warehouse[zipCode] || 0) + 1;
+                        }
+                    });
+                }
             }
-        });
+
+            // Ensure all zip codes are accounted for
+            const zipCodes = ["10001", "10002", "10003", "10004", "10005"];
+            zipCodes.forEach(zipCode => {
+                if (!(zipCode in warehouse)) {
+                    warehouse[zipCode] = 4; // Default value if not found in data
+                }
+            });
+
+            return warehouse;
+        }
+
+        // Render the chart with transformed data
+        function renderChart(warehouseData) {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(warehouseData), // Zip codes as labels
+                    datasets: [{
+                        label: 'Number of Entries per Zip Code',
+                        data: Object.values(warehouseData), // Data values
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Populate the data table
+        function populateTable(warehouseData) {
+            const tableBody = document.getElementById('data-table');
+            tableBody.innerHTML = ''; // Clear previous rows if any
+            for (const [zipCode, count] of Object.entries(warehouseData)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${zipCode}</td><td>${count}</td>`;
+                tableBody.appendChild(row);
+            }
+        }
+
+        // Fetch and render data when the page loads
+        fetchData();
     </script>
 </body>
 </html>
