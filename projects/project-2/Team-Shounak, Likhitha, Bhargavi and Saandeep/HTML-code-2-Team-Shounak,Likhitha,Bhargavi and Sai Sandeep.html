@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flower Data Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <h1>Flower Stock and Count Visualization</h1>
+    
+    <!-- Line chart for stock and count per zip code -->
+    <h2>Stock and Count per Zip Code</h2>
+    <canvas id="zipCodeChart" width="400" height="200"></canvas>
+    
+    <!-- Pie chart for total flower stock -->
+    <h2>Total Flower Stock Distribution</h2>
+    <canvas id="totalStockChart" width="400" height="200"></canvas>
+
+    <script>
+      // Fetch data from the Flask server
+      async function fetchData() {
+        try {
+          const response = await fetch('http://127.0.0.1:5000/get_flower_data');
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return await response.json();
+        } catch (error) {
+          console.error('Error fetching data:', error);
+          return null;
+        }
+      }
+
+      // Aggregate data by zip code for charting
+      function aggregateData(data) {
+        const aggregatedData = {};
+
+        for (const source of Object.values(data)) {
+          if (source.flowers) {
+            source.flowers.forEach((flower) => {
+              const zip = flower.zip_code;
+              if (zip) {
+                if (!aggregatedData[zip]) aggregatedData[zip] = { stock: 0, count: 0 };
+                aggregatedData[zip].stock += flower.stock || 0;
+                aggregatedData[zip].count += 1;
+              }
+            });
+          }
+
+          if (source.relationships) {
+            source.relationships.forEach((relationship) => {
+              const zip = relationship.zip_code;
+              if (zip) {
+                if (!aggregatedData[zip]) aggregatedData[zip] = { stock: 0, count: 0 };
+                aggregatedData[zip].count += 1;
+              }
+            });
+          }
+
+          if (source.inventory) {
+            for (const key in source.inventory) {
+              const value = source.inventory[key];
+              const zip = value.zip_code;
+              if (zip) {
+                if (!aggregatedData[zip]) aggregatedData[zip] = { stock: 0, count: 0 };
+                aggregatedData[zip].stock += value.stock || 0;
+              }
+            }
+          }
+
+          if (source.flower_sales) {
+            source.flower_sales.forEach((sale) => {
+              const zip = sale.zip_code;
+              if (zip) {
+                if (!aggregatedData[zip]) aggregatedData[zip] = { stock: 0, count: 0 };
+                aggregatedData[zip].count += 1;
+              }
+            });
+          }
+        }
+
+        return aggregatedData;
+      }
+
+      // Render the line chart for stock and count
+      function renderLineChart(aggregatedData) {
+        const zipCodes = Object.keys(aggregatedData); // X-axis labels
+        const totalStock = zipCodes.map((zip) => aggregatedData[zip].stock); // Stock data
+        const flowerCount = zipCodes.map((zip) => aggregatedData[zip].count); // Count data
+
+        const ctx = document.getElementById('zipCodeChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: zipCodes, // Zip code labels
+            datasets: [
+              {
+                label: 'Total Flower Stock',
+                data: totalStock,
+                borderColor: 'green',
+                borderWidth: 2,
+                tension: 0.1,
+                pointRadius: 5,
+                fill: false,
+              },
+              {
+                label: 'Flower Count',
+                data: flowerCount,
+                borderColor: 'blue',
+                borderWidth: 2,
+                tension: 0.1,
+                pointRadius: 5,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: 'Zip Code',
+                },
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'Value',
+                },
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+      }
+
+      // Render the pie chart for total flower stock
+      function renderPieChart(aggregatedData) {
+        const zipCodes = Object.keys(aggregatedData); // Labels
+        const totalStock = zipCodes.map((zip) => aggregatedData[zip].stock); // Data
+
+        const ctx = document.getElementById('totalStockChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: zipCodes, // Zip code labels
+            datasets: [
+              {
+                label: 'Flower Stock Distribution',
+                data: totalStock,
+                backgroundColor: [
+                  'rgba(75, 192, 192, 0.6)',
+                  'rgba(255, 159, 64, 0.6)',
+                  'rgba(153, 102, 255, 0.6)',
+                  'rgba(255, 205, 86, 0.6)',
+                  'rgba(54, 162, 235, 0.6)',
+                ],
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+          },
+        });
+      }
+
+      // Main function to fetch, process, and visualize data
+      async function initializeVisualization() {
+        const rawData = await fetchData();
+        if (!rawData) {
+          document.getElementById('zipCodeChart').replaceWith('No data available.');
+          document.getElementById('totalStockChart').replaceWith('No data available.');
+          return;
+        }
+        const aggregatedData = aggregateData(rawData);
+        renderLineChart(aggregatedData);
+        renderPieChart(aggregatedData);
+      }
+
+      // Initialize the visualization
+      initializeVisualization();
+    </script>
+  </body>
+</html>
