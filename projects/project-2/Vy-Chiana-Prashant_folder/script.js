@@ -60,5 +60,84 @@ fetch('http://localhost:5000/get_flower_data')
 
         console.log('Data Lake:', lake);
 
+
+        // create warehouse
+        // with zipcodes and flower count per zipcode
+
+        // array of unique zip codes
+        const uniqueZips = lake
+            .map(entry => entry.flower.zip_code)
+            .filter((zip_code, index, self) =>
+            self.indexOf(zip_code) === index);
+    
+        console.log(uniqueZips);
+
+        // fill warehouse
+        const warehouse = { };
+
+        key = 0;
+        for (let zip in uniqueZips) {
+            let currentCount = lake
+                .filter(entry => entry.flower.zip_code === uniqueZips[key])
+                .reduce((count, _) => count + 1, 0);
+
+            warehouse[key] = {zip_code: uniqueZips[key], count: currentCount} // add entry
+
+            key ++;
+        }
+
+        console.log('Warehouse:', warehouse);
+
+        // Extract ZIP codes and counts
+        const zipCodes = Object.values(warehouse).map(entry => entry.zip_code);
+        const counts = Object.values(warehouse).map(entry => entry.count);
+
+        // Create a bar chart
+        const ctx = document.getElementById('zipChart').getContext('2d');
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: zipCodes,
+                datasets: [{
+                    label: 'Count of entries per ZIP Code',
+                    data: counts,
+                    backgroundColor: 'rgba(255, 175, 216, 0.8)',
+                    borderColor: 'rgba(255, 120, 190, 0.8)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Flower Data: Count of Entries Per ZIP Code',
+                        font: {
+                            size: 36,
+                            weight: 'bold'
+                        },
+                        color: '#000000',
+                        padding: { top: 30, bottom: 15 },
+                        align: 'center'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'ZIP Code'
+                        }
+                    }
+                }
+            }
+        });
     })
     .catch(error => console.error('Error fetching data:', error));
